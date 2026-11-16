@@ -69,6 +69,18 @@
       ],
       "human_intervention": "Requisitos aportados por el responsable; revisión pendiente.",
       "verification": "Verificaciones de estructura y enlaces; consultar ejecución del PR."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-16",
+      "artifact_type": "corrección documental",
+      "paths": [
+        "README.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json"
+      ],
+      "human_intervention": "Inconsistencia identificada por el responsable; revisión pendiente.",
+      "verification": "Comprobación estática local y CI del PR."
     }
   ]
 }
