@@ -113,6 +113,7 @@ jobs:
             ${{ runner.temp }}/ros-logs/
             ros2_ws/log/
             ros2_ws/build/**/test_results/
+            ros2_ws/build/**/Testing/
           if-no-files-found: warn
 
   ros_gate:
