@@ -138,6 +138,35 @@ class GitChecks(unittest.TestCase):
         self.git('commit', '-qm', 'policy')
         self.assertEqual(states(check_git_context.check(self.root, target='main', environ={}))['GIT-SHARED'], 'SKIP')
 
+    def test_vision_interna_no_alerta_contrato(self):
+        self.git('switch', '-qc', 'feature/vision-interna')
+        path = self.root / 'ros2_ws/src/robot_percepcion_decision/vision.py'
+        path.parent.mkdir(parents=True)
+        path.write_text('value = 1\n')
+        result = {item['id']: item for item in check_git_context.check(self.root, target='main', environ={}).checks}
+        self.assertEqual(result['GIT-SHARED']['status'], 'PASS')
+        self.assertEqual(result['GIT-CROSS']['status'], 'PASS')
+        self.assertIn('vision:', result['GIT-OWNERS']['explanation'])
+
+    def test_interfaces_alerta_revision_conjunta(self):
+        self.git('switch', '-qc', 'feature/vision-interfaces')
+        path = self.root / 'ros2_ws/src/robot_interfaces/msg/Target.msg'
+        path.parent.mkdir(parents=True)
+        path.write_text('float64 x\n')
+        result = {item['id']: item for item in check_git_context.check(self.root, target='main', environ={}).checks}
+        self.assertEqual(result['GIT-SHARED']['status'], 'SKIP')
+        self.assertIn('robot_interfaces', result['GIT-SHARED']['explanation'])
+
+    def test_cambios_en_dos_subsistemas_son_transversales(self):
+        self.git('switch', '-qc', 'feature/vision-brazo')
+        for package in ('robot_brazo', 'robot_percepcion_decision'):
+            path = self.root / 'ros2_ws/src' / package / 'node.py'
+            path.parent.mkdir(parents=True)
+            path.write_text('value = 1\n')
+        result = states(check_git_context.check(self.root, target='main', environ={}))
+        self.assertEqual(result['GIT-SHARED'], 'PASS')
+        self.assertEqual(result['GIT-CROSS'], 'SKIP')
+
     def test_wrong_remote(self):
         self.git('remote', 'set-url', 'origin', 'https://example.invalid/other.git')
         self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], 'FAIL')

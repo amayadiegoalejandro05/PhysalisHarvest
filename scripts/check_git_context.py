@@ -9,6 +9,23 @@ from check_common import Report, git
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = 'github.com/amayadiegoalejandro05/Robot-Cosechador'
 SUBSYSTEMS = {'vision', 'brazo', 'locomocion'}
+OWNED = {'robot_percepcion_decision': 'vision', 'robot_brazo': 'brazo', 'robot_locomocion': 'locomocion'}
+
+
+def classify_path(path):
+    parts = path.split('/')
+    # Shared integration paths are defined by location, not assumptions about semantics.
+    shared_prefixes = ('.github/', 'docs/interfaces/', 'docs/integracion/', 'ros2_ws/src/robot_interfaces/',
+                       'ros2_ws/src/robot_bringup/', 'ros2_ws/src/robot_description/',
+                       'ros2_ws/src/robot_integration/', 'config/tf/', 'config/frames/', 'scripts/')
+    shared_files = {'AGENTS.md', 'CONTRIBUTING.md', 'requirements.txt', 'requirements-dev.txt',
+                    'pyproject.toml', 'ros2_ws/rosdep.yaml', 'ros2_ws/colcon.meta'}
+    if path in shared_files or any(path.startswith(prefix) for prefix in shared_prefixes):
+        return 'shared'
+    if len(parts) >= 4 and parts[:2] == ['ros2_ws', 'src'] and parts[2] in OWNED:
+        return OWNED[parts[2]]
+    return 'other'
+
 
 
 def check(root, target=None, subsystem=None, environ=None):
@@ -86,7 +103,6 @@ def check(root, target=None, subsystem=None, environ=None):
                 report.add('GIT-CONFLICTS', 'SKIP', 'Posibles conflictos en árboles confirmados.', 'Revisar y resolver con responsables antes del PR.')
             else:
                 report.add('GIT-CONFLICTS', 'PASS', 'No se detectaron marcadores de conflicto en árboles confirmados.', 'Repetir con referencias actuales; no cubre cambios locales ni garantiza integración.')
-    shared = ('AGENTS.md', 'CONTRIBUTING.md', 'docs/interfaces/', 'ros2_ws/src/robot_interfaces/', '.github/', 'scripts/', 'ros2_ws/src/')
     changes = set()
     for args in [('diff', '--name-only', 'HEAD'), ('diff', '--cached', '--name-only'), ('ls-files', '--others', '--exclude-standard')]:
         result = run(*args)
@@ -98,8 +114,15 @@ def check(root, target=None, subsystem=None, environ=None):
             if result.returncode == 0: changes.update(result.stdout.splitlines())
             own = run('diff', '--name-only', base.stdout.strip(), 'HEAD')
             if own.returncode == 0: changes.update(own.stdout.splitlines())
-    risky = sorted(p for p in changes if any(p == x or (x.endswith('/') and p.startswith(x)) for x in shared) or p.endswith('package.xml'))
-    report.add('GIT-SHARED', 'SKIP' if risky else 'PASS', 'Rutas compartidas para revisar: ' + ', '.join(risky) if risky else 'Sin rutas compartidas detectadas en los cambios examinados.', 'Revisión humana de contratos, TF, dependencias, CI y estructura.' if risky else 'Confirmar alcance y compatibilidad con el equipo.')
+    grouped = {group: sorted(p for p in changes if classify_path(p) == group) for group in ('vision', 'brazo', 'locomocion', 'shared', 'other')}
+    risky = grouped['shared']
+    owners = [group for group in ('vision', 'brazo', 'locomocion') if grouped[group]]
+    report.add('GIT-OWNERS', 'PASS' if owners else 'SKIP', '; '.join(f'{owner}: {", ".join(grouped[owner])}' for owner in owners) if owners else 'No se detectaron rutas exclusivas de subsistema.', 'Revisar propiedad y semántica de los cambios.')
+    report.add('GIT-SHARED', 'SKIP' if risky else 'PASS', 'Rutas compartidas para revisar: ' + ', '.join(risky) if risky else 'Sin rutas compartidas conocidas en los cambios examinados.', 'Solicitar revisión de integración y equipos afectados.' if risky else 'La clasificación por rutas no garantiza compatibilidad ROS ni detecta toda dependencia.')
+    cross = len(owners) > 1 or bool(risky and owners)
+    report.add('GIT-CROSS', 'SKIP' if cross else 'PASS', 'Cambios en varios subsistemas o en subsistema e integración compartida.' if cross else 'No se detectó combinación transversal por rutas.', 'Solicitar revisión conjunta de los equipos afectados.' if cross else 'Revisar manualmente el impacto semántico.')
+    if grouped['other']:
+        report.add('GIT-OTHER', 'SKIP', 'Rutas no clasificadas: ' + ', '.join(grouped['other']), 'Determinar responsables y posible impacto transversal manualmente.')
     recognized = source in SUBSYSTEMS | {'main'} or bool(re.fullmatch(r'(feature|fix|experiment|test)/[A-Za-z0-9._/-]+', source))
     if not source:
         report.add('GIT-SUBSYSTEM', 'SKIP', 'No se conoce la rama fuente.', 'Indicar la rama y el subsistema.')

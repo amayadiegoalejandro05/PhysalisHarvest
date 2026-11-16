@@ -13,3 +13,5 @@ Codex asistió en la estructura documental de los subsistemas y el entorno de re
 Codex asistió en la corrección del estado de CI del README principal solicitada por el responsable; la revisión humana está pendiente.
 
 Codex asistió en la política de sincronización y verificaciones Git; revisión humana y adopción pendientes.
+
+Codex asistió en la clasificación de rutas y el procedimiento de sincronización solicitado; revisión humana pendiente.

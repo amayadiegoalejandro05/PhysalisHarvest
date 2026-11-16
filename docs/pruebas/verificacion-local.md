@@ -29,3 +29,18 @@ El análisis YAML se omite si falta PyYAML; no instalarlo automáticamente. Los 
 El verificador compara destino y `origin/main` por separado y clasifica sincronización, atraso o divergencia respecto a referencias locales. Un atraso, cambios locales o conflicto posible se informa como SKIP para no bloquear commits; fallos críticos como origen incorrecto siguen siendo FAIL. La vista de conflictos usa árboles confirmados y es orientativa; no prueba ausencia de conflictos con cambios locales. Los archivos compartidos detectados requieren revisión humana. Los resultados no prueban vigencia del servidor: una actualización explícita de referencias, cuando esté autorizada, precede a la comprobación actual. En PR con HEAD separado se reporta el merge temporal como tal. No hace fetch, merge, reset, rebase ni push.
 
 Propuesta administrativa pendiente: proteger `main` con PR, CI estable, revisión humana, rama actualizada, conversaciones resueltas, bloqueo de force push y eliminación; evaluar excepciones administrativas y revisores disponibles para no bloquear al responsable único. Las reglas no se aplican mediante esta documentación ni por el script.
+
+## Clasificación de rutas
+
+`GIT-OWNERS` agrupa rutas internas de cada subsistema; `GIT-SHARED` identifica rutas conocidas de interfaces, integración, TF común, CI y dependencias compartidas; `GIT-CROSS` señala combinaciones de varios subsistemas o un subsistema con rutas compartidas. Las rutas desconocidas aparecen en `GIT-OTHER` para revisión manual. La clasificación es heurística: archivos internos también pueden alterar contratos o TF y sus responsables deben examinar la semántica. Un PASS de Git no demuestra compatibilidad ROS.
+
+## Sincronización inicial mediante PR
+
+Solo después de la revisión e integración del PR de política en `main`, para cada una de `vision`, `brazo` y `locomocion`:
+
+1. Conserve cambios locales; confirme `git remote -v`, estado, worktrees y, si hay autorización y conectividad, ejecute `git fetch origin`. Registre `git rev-parse origin/main` y `git rev-parse origin/<rama>`.
+2. Inspeccione `git log --left-right --oneline origin/<rama>...origin/main` y `git diff --stat origin/<rama>...origin/main`; compruebe commits exclusivos y cambios en contratos, TF, dependencias y CI. Si aparecen commits nuevos del equipo o conflictos, detenga esa sincronización y coordine su revisión. No resuelva sobrescribiendo trabajo.
+3. Abra un PR independiente con `main` como origen y el subsistema como destino. Registre ambos SHA, archivos afectados, pruebas y revisores. Revise conflictos, verificaciones CI y compatibilidad; no fusione automáticamente. Un fast-forward directo es una excepción que exige autorización específica.
+4. Tras la revisión y fusión humana, actualice referencias y registre los SHA finales. Compruebe `git merge-base --is-ancestor origin/main origin/<rama>` si se integró el main actual y compare contenido con `git diff --name-status origin/main origin/<rama>`. Si el equipo tiene cambios propios, interprete diferencias y compruebe los archivos comunes por separado. Verifique AGENTS general y especializados, README, entorno, CI y scripts en un clon limpio y ejecute los verificadores disponibles.
+
+Un merge commit puede dejar SHA diferentes aun cuando el contenido de los árboles sea idéntico. No use la igualdad de SHA como prueba única de igualdad de archivos; compare árboles o rutas y registre cualquier diferencia. El SHA final solo se conoce después de la integración humana.
