@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -120,6 +121,24 @@ class GitChecks(unittest.TestCase):
         env = {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'pull_request', 'GITHUB_HEAD_REF': 'feature/vision-test', 'GITHUB_BASE_REF': 'main'}
         result = states(check_git_context.check(self.root, environ=env))
         self.assertEqual(result['GIT-TARGET-DIVERGENCE'], 'SKIP')
+
+
+class RosInventoryChecks(unittest.TestCase):
+    def test_package_counts_and_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / 'ros2_ws/src/robot_brazo'
+            package.mkdir(parents=True)
+            (package / 'package.xml').write_text('<package><name>robot_brazo</name></package>')
+            results = root / 'ros2_ws/build/robot_brazo/test_results'
+            results.mkdir(parents=True)
+            (results / 'result.xml').write_text('<testsuite><testcase name="one"/></testsuite>')
+            script = Path(__file__).resolve().parents[1] / 'scripts/report_ros_packages.py'
+            result = subprocess.run([sys.executable, str(script), str(root)], check=True, capture_output=True, text=True, encoding='utf-8', env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
+            self.assertIn('Paquetes ROS detectados: 1', result.stdout)
+            self.assertIn('brazo: 1 paquetes', result.stdout)
+            self.assertIn('1 casos con resultado', result.stdout)
+            self.assertIn('visión: SKIP', result.stdout)
 
 
 if __name__ == '__main__': unittest.main()

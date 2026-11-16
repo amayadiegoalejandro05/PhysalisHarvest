@@ -3,7 +3,7 @@
 ## Flujo de trabajo
 
 1. Actualice sus referencias con `git fetch origin`. Parta de `origin/vision`, `origin/brazo` u `origin/locomocion`, según el subsistema; cree una rama temporal descriptiva, por ejemplo `git switch -c feature/vision-seleccion origin/vision`.
-2. Realice cambios acotados y commits descriptivos, por ejemplo `git commit -m "Documentar criterios de selección"`. No incluya secretos, entornos, datos ni artefactos pesados sin política acordada.
+2. Realice cambios acotados y commits descriptivos en inglés técnico, por ejemplo `git commit -m "docs(vision): describe selection criteria"`. No incluya secretos, entornos, datos ni artefactos pesados sin política acordada.
 3. Sincronice periódicamente su rama de subsistema con `main`: actualice referencias y proponga mediante PR los cambios de `main` hacia la rama del subsistema. Resuelva conflictos y coordine cambios compartidos. Evite reescribir historial compartido.
 4. Publique su rama temporal y abra un PR hacia su rama de subsistema. Complete la plantilla, describa pruebas y limitaciones y solicite revisión. Para integrar en `main`, abra un PR desde la rama de subsistema, solicite revisión y resuelva conversaciones y conflictos antes del merge. Nunca integre trabajo directamente en `main` ni active merge automático sin revisión.
 5. Acuerde con los tres equipos cualquier cambio a `robot_interfaces`, marcos, unidades o semántica. Registre decisiones y compatibilidad antes de implementar contratos.

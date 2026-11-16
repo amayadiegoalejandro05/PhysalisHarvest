@@ -20,9 +20,34 @@
       "tool": "Codex",
       "date": "2026-11-16",
       "artifact_type": "workflow y documentación de CI",
-      "paths": [".github/workflows/ci.yml", "CONTRIBUTING.md", "docs/pruebas/ci.md", "docs/AI_USAGE.md", "docs/ai_usage.json"],
+      "paths": [
+        ".github/workflows/ci.yml",
+        "CONTRIBUTING.md",
+        "docs/pruebas/ci.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json"
+      ],
       "human_intervention": "Requisitos aportados por el responsable; revisión de integración pendiente.",
       "verification": "Comprobaciones locales; ejecución en GitHub pendiente."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-16",
+      "artifact_type": "correcciones CI, pruebas y documentación",
+      "paths": [
+        ".github/workflows/ci.yml",
+        "scripts/run_ros_tests.sh",
+        "scripts/probe_ros_test_gate.sh",
+        "scripts/report_ros_packages.py",
+        "docs/interfaces/propuesta-integracion-ros2.md",
+        "docs/pruebas/ci.md",
+        "CONTRIBUTING.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json",
+        "tests/test_verificadores.py"
+      ],
+      "human_intervention": "Requisitos y aprobación del AGENTS.md aportados por el responsable; revisión técnica pendiente.",
+      "verification": "Verificaciones locales y ejecución GitHub Actions sujetas a resultados observados."
     }
   ]
 }
