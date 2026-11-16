@@ -48,6 +48,27 @@
       ],
       "human_intervention": "Requisitos y aprobación del AGENTS.md aportados por el responsable; revisión técnica pendiente.",
       "verification": "Verificaciones locales y ejecución GitHub Actions sujetas a resultados observados."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-16",
+      "artifact_type": "documentación e instrucciones de agentes",
+      "paths": [
+        "ros2_ws/src/robot_percepcion_decision/AGENTS.md",
+        "ros2_ws/src/robot_percepcion_decision/README.md",
+        "ros2_ws/src/robot_brazo/AGENTS.md",
+        "ros2_ws/src/robot_brazo/README.md",
+        "ros2_ws/src/robot_locomocion/AGENTS.md",
+        "ros2_ws/src/robot_locomocion/README.md",
+        "ros2_ws/src/robot_interfaces/AGENTS.md",
+        "ros2_ws/src/robot_interfaces/README.md",
+        "docs/entorno-reproducible.md",
+        "docs/integracion/README.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json"
+      ],
+      "human_intervention": "Requisitos aportados por el responsable; revisión pendiente.",
+      "verification": "Verificaciones de estructura y enlaces; consultar ejecución del PR."
     }
   ]
 }
