@@ -139,6 +139,12 @@ class RosInventoryChecks(unittest.TestCase):
             self.assertIn('brazo: 1 paquetes', result.stdout)
             self.assertIn('1 casos con resultado', result.stdout)
             self.assertIn('visión: SKIP', result.stdout)
+            (results / 'result.xml').unlink()
+            ctest = root / 'ros2_ws/build/robot_brazo/Testing/20261116-1200'
+            ctest.mkdir(parents=True)
+            (ctest / 'Test.xml').write_text('<Site><Testing><Test Status="passed"/></Testing></Site>')
+            result = subprocess.run([sys.executable, str(script), str(root)], check=True, capture_output=True, text=True, encoding='utf-8', env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
+            self.assertIn('1 casos con resultado', result.stdout)
 
 
 if __name__ == '__main__': unittest.main()

@@ -5,3 +5,5 @@ En esta etapa se utilizó Codex para diseñar e implementar verificadores locale
 También se utilizó Codex para preparar el workflow de CI y su documentación. La ejecución en GitHub, la revisión humana y la aceptación siguen pendientes hasta contar con evidencia real.
 
 La primera ejecución del PR #2 completó estáticos y resumen; el job ROS omitió compilación y pruebas por no haber paquetes. Codex preparó correcciones de la puerta de pruebas ROS y una propuesta de integración posterior; su revisión humana y evidencia de ejecución actualizada quedan pendientes.
+
+La segunda ejecución del PR demostró el fallo y la corrección en el paquete temporal de CI; la validación ROS del robot y la revisión humana siguen pendientes.

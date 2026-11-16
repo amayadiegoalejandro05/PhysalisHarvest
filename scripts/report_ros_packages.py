@@ -16,8 +16,14 @@ for manifest in manifests:
     try:
         name = ET.parse(manifest).getroot().findtext('name')
         installed = (workspace / 'install' / name / 'share' / name / 'package.xml').is_file()
-        results = list((workspace / 'build' / name / 'test_results').rglob('*.xml'))
+        build = workspace / 'build' / name
+        results = list((build / 'test_results').rglob('*.xml'))
         count = sum(len(ET.parse(p).getroot().findall('.//testcase')) for p in results)
+        # CTest's native Test.xml is distinct from JUnit; do not count both copies.
+        if not count:
+            ctest = sorted((build / 'Testing').glob('*/Test.xml'), key=lambda p: p.stat().st_mtime)
+            if ctest:
+                count = len(ET.parse(ctest[-1]).getroot().findall('.//Testing/Test'))
         status = f'{count} casos con resultado' if count else 'SKIP, sin casos registrados'
         print(f'{name}: compilado={"sí" if installed else "no confirmado"}; pruebas={status}')
     except (ET.ParseError, OSError, TypeError) as exc:
