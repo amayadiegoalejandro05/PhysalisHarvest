@@ -15,3 +15,9 @@ Documente comandos, entorno, resultados, fallos y límites de pruebas reproducib
 ## Integración continua
 
 Los PR hacia las ramas principales y los push a ellas ejecutan la propuesta de CI. En el PR consulte **Checks**; en **Actions**, abra la ejecución, revise el resumen, cada job y sus artefactos. Un job ROS verde con `SKIP` indica ausencia de paquetes, no validación. Ante un fallo, revise el primer paso fallido y sus logs, corrija el cambio y vuelva a ejecutar. Los comandos locales y límites están en [verificación local](docs/pruebas/verificacion-local.md) y [CI](docs/pruebas/ci.md).
+
+## Comprobación antes de commit y PR
+
+Siga la sección 11 de [AGENTS.md](AGENTS.md). Verifique `origin`, estado y SHA; cuando esté autorizado y sea posible ejecute `git fetch origin` y después `python scripts/check_git_context.py --target vision --subsystem vision` (ajuste destino y subsistema). Repita con `main` para cambios transversales. Registre adelantados, atrasados, conflictos posibles, archivos compartidos y si la información es local o actualizada. Estar atrasado no obliga a hacer merge antes de cada commit; antes de integrar, revise compatibilidad y solicite revisión.
+
+Las ramas temporales `feature/vision-*`, `feature/brazo-*` y `feature/locomocion-*` se crean desde su subsistema respectivo y proponen PR a esa rama. Los PR de subsistemas hacia `main` requieren CI aplicable, SHA documentados y revisión; contratos requieren acuerdo de productores y consumidores. La comprobación local y las instrucciones no son protección GitHub: las reglas administrativas son las que pueden exigir PR, CI, revisión, actualización, conversaciones resueltas y prohibición de force push. Véase [verificación local](docs/pruebas/verificacion-local.md).

@@ -13,3 +13,5 @@ Responsabilidad: RGB-D, detección del cáliz, XYZ superficial, accesibilidad, s
 - Conserve trazabilidad de IA y licencias según la política general; no incorpore materiales externos sin comprobar derechos.
 - Documente entorno, comandos, evidencia, fallos y limitaciones; distinga MOCK, simulación y pruebas físicas. No afirme validación sin criterios y evidencia.
 - Use ramas y PR revisados según la política general; no altere experimentos o trabajo ajeno.
+
+Antes de cada commit y PR aplique la política central de sincronización de la sección 11 de [AGENTS.md](../../../AGENTS.md), indicando destino y subsistema.

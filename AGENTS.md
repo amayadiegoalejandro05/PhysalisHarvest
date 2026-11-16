@@ -110,3 +110,11 @@ Antes de solicitar revisión de integración:
 Al revisar un PR, señala con prioridad: (a) cambios silenciosos de interfaces, unidades o TF; (b) órdenes de actuadores sin validación o parada; (c) fuga de datos/secreto; (d) afirmaciones experimentales sin prueba; (e) ausencia de aislamiento entre verdad simulada y estimación; (f) licencias incompatibles; (g) modificaciones fuera de la propiedad del equipo; (h) tests que no prueban el comportamiento anunciado. Bloquea la integración de hallazgos críticos, explica el riesgo y exige evidencia de corrección.
 
 Estas reglas se adoptan como gobernanza del repositorio y se revisan mediante PR y acuerdo de las personas responsables. **Un agente no aprueba por sí mismo resultados científicos ni autoriza la actuación del robot.**
+
+## 11. Comprobación de sincronización antes de commits y PR
+
+Antes de cada commit, verifique repositorio y `origin`, rama y SHA, revise `git status` y el diff, y actualice referencias con `git fetch origin` solo cuando haya conectividad y autorización. Compare con la rama de destino y `origin/main` mediante `python scripts/check_git_context.py --target <destino>`, registrando commits adelantados y atrasados, rutas compartidas y posibles incompatibilidades. Indique si el resultado es actual, solo local o no verificable; una referencia local no demuestra sincronización remota. No se exige hacer merge en cada commit: estar atrasado exige informar y revisar antes de integrar.
+
+Antes de cada PR, confirme rama, subsistema y destino, verifique la base de destino y compatibilidad con main, ejecute CI y pruebas aplicables y registre SHA, resultados y bloqueos. Los cambios en contratos, TF, dependencias, CI o estructura requieren revisión humana; interfaces requieren revisión conjunta de productores, consumidores y responsables de integración. No confunda atraso con conflicto; no haga merges automáticos.
+
+Las ramas `feature/vision-*`, `feature/brazo-*` y `feature/locomocion-*` nacen de `vision`, `brazo` y `locomocion`, respectivamente. Los subsistemas se proponen a `main` por PR. Si no puede verificar conectividad o referencias, registre la limitación en vez de afirmar que están actualizadas.
