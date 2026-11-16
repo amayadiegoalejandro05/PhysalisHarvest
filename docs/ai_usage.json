@@ -1,0 +1,28 @@
+{
+  "uses": [
+    {
+      "tool": "Codex",
+      "date": "2026-11-16",
+      "artifact_type": "código, pruebas y documentación",
+      "paths": [
+        "scripts/check_common.py",
+        "scripts/check_repository.py",
+        "scripts/check_git_context.py",
+        "tests/test_verificadores.py",
+        "docs/pruebas/verificacion-local.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json"
+      ],
+      "human_intervention": "Solicitud y requisitos proporcionados por el responsable; revisión del resultado pendiente.",
+      "verification": "Pruebas unitarias y verificaciones locales; consultar resultados de ejecución."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-16",
+      "artifact_type": "workflow y documentación de CI",
+      "paths": [".github/workflows/ci.yml", "CONTRIBUTING.md", "docs/pruebas/ci.md", "docs/AI_USAGE.md", "docs/ai_usage.json"],
+      "human_intervention": "Requisitos aportados por el responsable; revisión de integración pendiente.",
+      "verification": "Comprobaciones locales; ejecución en GitHub pendiente."
+    }
+  ]
+}

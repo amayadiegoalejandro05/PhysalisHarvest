@@ -1,0 +1,11 @@
+# Propuesta de CI para revisión
+
+El workflow se ejecuta en PR hacia `main`, `vision`, `brazo` y `locomocion`, en push a estas ramas y manualmente. El job estático reutiliza los verificadores y sus pruebas, con Python y PyYAML en un entorno aislado del runner. Las acciones se fijan por commit y el token tiene únicamente permiso de lectura de contenido.
+
+El job ROS usa `ros:jazzy-ros-base` en un runner Ubuntu 24.04. Si no hay `package.xml` en `ros2_ws/src`, muestra **SKIP** y no instala herramientas ni afirma validación ROS. Si aparecen manifiestos, instala colcon y rosdep, resuelve dependencias declaradas, compila, inspecciona definiciones `msg`, `srv` y `action`, ejecuta `colcon test` y guarda logs como artefacto incluso si falla. Se debe comprobar el número y alcance de pruebas reales en los logs: un `colcon test` sin pruebas no prueba contratos. El contenedor usa una etiqueta mutable y apt/rosdep resuelven versiones actuales; el entorno es repetible en intención, pero aún no es una compilación reproducible bit a bit. Debe fijarse un digest verificado y una política de dependencias para mayor reproducibilidad.
+
+Los contratos compartidos siguen siendo propuestas. Las pruebas de tipos, unidades, marcos, tiempos, estados y compatibilidad productor/consumidor se incorporarán cuando los equipos aprueben y construyan las interfaces. La CI no ejecuta hardware físico. La inspección de tipos por sí sola no verifica semántica ni seguridad.
+
+En GitHub, abra el PR y seleccione **Checks** para ver cada job; o abra **Actions**, seleccione la ejecución y revise el resumen, los pasos y los artefactos `informe-estatico` y, cuando aplique, `logs-ros`. El resumen distingue el SHA fuente del PR, el SHA base y el SHA evaluado, que puede ser el merge temporal. Ante un fallo, revise el primer paso fallido y su log, corrija el problema en la rama y repita. Si un job se omite o termina antes de detectar paquetes, revise su estado y no lo interprete como validación.
+
+Las acciones y sus imágenes externas necesitan red y servicios disponibles. No se han configurado checks obligatorios ni protecciones con este cambio; primero se requiere observar una ejecución real en GitHub y revisión de los equipos.

@@ -11,3 +11,7 @@
 ## Evidencia y datos
 
 Documente comandos, entorno, resultados, fallos y límites de pruebas reproducibles. No confunda simulación con validación física. Mantenga credenciales fuera de Git; un `.gitignore` no protege secretos ya rastreados. Datasets, bolsas ROS, grabaciones y pesos requieren una política compartida de almacenamiento, acceso, versiones y licencias antes de incorporarlos.
+
+## Integración continua
+
+Los PR hacia las ramas principales y los push a ellas ejecutan la propuesta de CI. En el PR consulte **Checks**; en **Actions**, abra la ejecución, revise el resumen, cada job y sus artefactos. Un job ROS verde con `SKIP` indica ausencia de paquetes, no validación. Ante un fallo, revise el primer paso fallido y sus logs, corrija el cambio y vuelva a ejecutar. Los comandos locales y límites están en [verificación local](docs/pruebas/verificacion-local.md) y [CI](docs/pruebas/ci.md).
