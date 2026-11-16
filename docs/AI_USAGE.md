@@ -11,3 +11,5 @@ La segunda ejecución del PR demostró el fallo y la corrección en el paquete t
 Codex asistió en la estructura documental de los subsistemas y el entorno de referencia; los requisitos fueron suministrados por el responsable y la revisión humana está pendiente.
 
 Codex asistió en la corrección del estado de CI del README principal solicitada por el responsable; la revisión humana está pendiente.
+
+Codex asistió en la política de sincronización y verificaciones Git; revisión humana y adopción pendientes.

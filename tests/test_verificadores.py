@@ -108,9 +108,35 @@ class GitChecks(unittest.TestCase):
         env = {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'pull_request', 'GITHUB_HEAD_REF': 'feature/brazo-demo', 'GITHUB_BASE_REF': 'main'}
         result = states(check_git_context.check(self.root, subsystem='vision', environ=env))
         self.assertEqual(result['GIT-BRANCH'], 'SKIP')
-        self.assertEqual(result['GIT-TARGET-DIVERGENCE'], 'FAIL')
-        self.assertEqual(result['GIT-WORKTREE'], 'FAIL')
+        self.assertEqual(result['GIT-TARGET-DIVERGENCE'], 'SKIP')
+        self.assertEqual(result['GIT-WORKTREE'], 'SKIP')
         self.assertEqual(result['GIT-SUBSYSTEM'], 'FAIL')
+
+    def test_divergence_and_conflict_are_advisory(self):
+        self.git('switch', '-qc', 'feature/vision-demo')
+        (self.root / 'example').write_text('local')
+        self.git('commit', '-qam', 'local')
+        self.git('switch', '-q', 'main')
+        (self.root / 'example').write_text('remote')
+        self.git('commit', '-qam', 'remote')
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('switch', '-q', 'feature/vision-demo')
+        report = check_git_context.check(self.root, target='main', environ={})
+        entries = {x['id']: x for x in report.checks}
+        self.assertEqual(entries['GIT-TARGET-DIVERGENCE']['status'], 'SKIP')
+        self.assertIn('divergente', entries['GIT-TARGET-DIVERGENCE']['explanation'])
+        self.assertEqual(entries['GIT-CONFLICTS']['status'], 'SKIP')
+        self.assertIn('conflictos', entries['GIT-CONFLICTS']['explanation'])
+
+    def test_ahead_and_shared_change(self):
+        self.git('switch', '-qc', 'feature/vision-demo')
+        (self.root / 'AGENTS.md').write_text('policy')
+        self.git('add', 'AGENTS.md')
+        result = check_git_context.check(self.root, target='main', environ={})
+        self.assertEqual(states(result)['GIT-SHARED'], 'SKIP')
+        self.assertEqual(states(result)['GIT-WORKTREE'], 'SKIP')
+        self.git('commit', '-qm', 'policy')
+        self.assertEqual(states(check_git_context.check(self.root, target='main', environ={}))['GIT-SHARED'], 'SKIP')
 
     def test_wrong_remote(self):
         self.git('remote', 'set-url', 'origin', 'https://example.invalid/other.git')

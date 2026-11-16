@@ -81,6 +81,26 @@
       ],
       "human_intervention": "Inconsistencia identificada por el responsable; revisión pendiente.",
       "verification": "Comprobación estática local y CI del PR."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-16",
+      "artifact_type": "política y verificador Git",
+      "paths": [
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "scripts/check_git_context.py",
+        "tests/test_verificadores.py",
+        "docs/pruebas/verificacion-local.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json",
+        "ros2_ws/src/robot_brazo/AGENTS.md",
+        "ros2_ws/src/robot_interfaces/AGENTS.md",
+        "ros2_ws/src/robot_locomocion/AGENTS.md",
+        "ros2_ws/src/robot_percepcion_decision/AGENTS.md"
+      ],
+      "human_intervention": "Requisitos proporcionados por el responsable; revisión pendiente.",
+      "verification": "Pruebas locales y CI del PR."
     }
   ]
 }
