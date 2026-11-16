@@ -1,0 +1,173 @@
+name: Verificación inicial
+
+on:
+  pull_request:
+    branches: [main, vision, brazo, locomocion]
+  push:
+    branches: [main, vision, brazo, locomocion]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: Verificación estática y pruebas
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0, Node 24
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Preparar analizador YAML aislado
+        run: |
+          python3 -m venv "$RUNNER_TEMP/ci-venv"
+          "$RUNNER_TEMP/ci-venv/bin/python" -m pip install 'PyYAML==6.0.2'
+      - name: Contexto Git
+        run: '"$RUNNER_TEMP/ci-venv/bin/python" scripts/check_git_context.py'
+      - name: Repositorio y sintaxis
+        run: '"$RUNNER_TEMP/ci-venv/bin/python" scripts/check_repository.py --json "$RUNNER_TEMP/repository-check.json"'
+      - name: Pruebas positivas, negativas y omisiones
+        run: '"$RUNNER_TEMP/ci-venv/bin/python" -m unittest discover -s tests -p "test_*.py" -v'
+      - name: Guardar informe estático
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0, Node 24
+        with:
+          name: informe-estatico
+          path: ${{ runner.temp }}/repository-check.json
+          if-no-files-found: warn
+
+  ros:
+    name: ROS 2 Jazzy
+    runs-on: ubuntu-24.04
+    container: ros:jazzy-ros-base@sha256:00b8d47a6e6384a2834e3d01fa87ae767876543baa574f2d64a75c04ea33c698
+    outputs:
+      packages: ${{ steps.detect.outputs.packages }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Detectar paquetes ROS
+        id: detect
+        shell: bash
+        run: |
+          if find ros2_ws/src -name package.xml -type f -print -quit | grep -q .; then
+            echo 'packages=true' >> "$GITHUB_OUTPUT"
+            echo 'Se encontraron manifiestos; se intentará compilar.'
+          else
+            echo 'packages=false' >> "$GITHUB_OUTPUT"
+            echo 'SKIP: no hay paquetes ROS 2; no se ha validado ROS.' | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          python3 scripts/report_ros_packages.py . | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Instalar herramientas y dependencias declaradas
+        if: steps.detect.outputs.packages == 'true'
+        shell: bash
+        run: |
+          set -eo pipefail
+          mkdir -p "$RUNNER_TEMP/ros-logs"
+          { apt-get update && apt-get install -y python3-colcon-common-extensions python3-rosdep && rosdep update --rosdistro jazzy && rosdep install --from-paths ros2_ws/src --ignore-src --rosdistro jazzy -r -y; } 2>&1 | tee "$RUNNER_TEMP/ros-logs/dependencias.log"
+      - name: Compilar paquetes
+        if: steps.detect.outputs.packages == 'true'
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          cd ros2_ws
+          colcon build --event-handlers console_direct+ 2>&1 | tee "$RUNNER_TEMP/ros-logs/build.log"
+      - name: Inspeccionar interfaces personalizadas
+        if: steps.detect.outputs.packages == 'true'
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          source ros2_ws/install/setup.bash
+          python3 - <<'PY' > "$RUNNER_TEMP/ros-logs/interfaces.txt"
+          import pathlib, subprocess, xml.etree.ElementTree as ET
+          for manifest in pathlib.Path('ros2_ws/src').rglob('package.xml'):
+              package = ET.parse(manifest).getroot().findtext('name')
+              for folder in ('msg', 'srv', 'action'):
+                  for interface in (manifest.parent / folder).glob('*.' + folder):
+                      name = f'{package}/{folder}/{interface.stem}'
+                      print(name, flush=True)
+                      subprocess.run(['ros2', 'interface', 'show', name], check=True)
+          PY
+          cat "$RUNNER_TEMP/ros-logs/interfaces.txt"
+      - name: Ejecutar pruebas ROS disponibles
+        if: steps.detect.outputs.packages == 'true'
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          source ros2_ws/install/setup.bash
+          bash scripts/run_ros_tests.sh ros2_ws "$RUNNER_TEMP/ros-logs"
+      - name: Inventario y resultados por subsistema
+        if: always() && steps.detect.outputs.packages == 'true'
+        shell: bash
+        run: python3 scripts/report_ros_packages.py . | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Conservar logs ROS
+        if: always() && steps.detect.outputs.packages == 'true'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: logs-ros
+          path: |
+            ${{ runner.temp }}/ros-logs/
+            ros2_ws/log/
+            ros2_ws/build/**/test_results/
+            ros2_ws/build/**/Testing/
+          if-no-files-found: warn
+
+  ros_gate:
+    name: Prueba controlada de puerta ROS
+    runs-on: ubuntu-24.04
+    container: ros:jazzy-ros-base@sha256:00b8d47a6e6384a2834e3d01fa87ae767876543baa574f2d64a75c04ea33c698
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Instalar herramientas de la prueba aislada
+        run: apt-get update && apt-get install -y python3-colcon-common-extensions cmake build-essential
+      - name: Comprobar fallo y corrección de prueba ROS
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          bash scripts/probe_ros_test_gate.sh "$RUNNER_TEMP/probe-logs"
+      - name: Conservar evidencia de la prueba aislada
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: evidencia-puerta-ros
+          path: ${{ runner.temp }}/probe-logs/
+          if-no-files-found: warn
+
+  resumen:
+    name: Resumen y trazabilidad
+    if: always()
+    needs: [static, ros, ros_gate]
+    runs-on: ubuntu-24.04
+    env:
+      SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      BASE_BRANCH: ${{ github.base_ref }}
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      EVALUATED_SHA: ${{ github.sha }}
+      STATIC_RESULT: ${{ needs.static.result }}
+      ROS_RESULT: ${{ needs.ros.result }}
+      GATE_RESULT: ${{ needs.ros_gate.result }}
+      ROS_PACKAGES: ${{ needs.ros.outputs.packages }}
+    steps:
+      - name: Publicar resumen
+        shell: bash
+        run: |
+          {
+            echo '## Trazabilidad y resultados'
+            printf -- '- Repositorio: %s\n- Rama fuente: %s\n- Rama base: %s\n' "$GITHUB_REPOSITORY" "$SOURCE_BRANCH" "${BASE_BRANCH:-no aplica}"
+            printf -- '- SHA fuente: %s\n- SHA base: %s\n- SHA evaluado: %s\n' "$SOURCE_SHA" "${BASE_SHA:-no aplica}" "$EVALUATED_SHA"
+            echo '- En PR, el SHA evaluado puede ser el merge temporal; en push corresponde al commit del evento.'
+            printf -- '- Entorno: ubuntu-24.04; ROS en contenedor ros:jazzy-ros-base\n- Job estático: %s\n- Job ROS: %s\n' "$STATIC_RESULT" "$ROS_RESULT"
+            printf -- '- Puerta ROS aislada: %s\n' "$GATE_RESULT"
+            if [ "$ROS_PACKAGES" = false ]; then echo '- ROS: SKIP, no hay paquetes; no hay validación ROS.'; elif [ "$ROS_PACKAGES" = true ]; then echo '- ROS: consultar logs para compilación, interfaces y pruebas.'; else echo '- ROS: detección no completada; revisar logs.'; fi
+            echo '- Contratos productor/consumidor: SKIP; están propuestos y aún no hay pruebas acordadas.'
+            echo '- Pruebas físicas: SKIP; no se ejecutan en el runner.'
+            echo '- Ante errores, abrir los jobs y sus artefactos; corregir el primer fallo y volver a ejecutar. Un job verde con SKIP no demuestra validación del robot.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$STATIC_RESULT" != success ] || [ "$ROS_RESULT" != success ] || [ "$GATE_RESULT" != success ]; then exit 1; fi

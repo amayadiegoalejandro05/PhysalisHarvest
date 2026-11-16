@@ -17,7 +17,7 @@ Se prevé emplear ROS 2, Gazebo, Python, visión artificial, sensores RGB-D y si
 ## Estructura
 
 ```text
-.github/                 Plantilla de PR y futuros flujos de CI
+.github/                 Plantilla de PR y flujo de CI
 ros2_ws/src/             Futuros paquetes de los tres subsistemas e interfaces
 simulacion/              Gazebo y modelos
 firmware/                Software embebido
@@ -30,4 +30,4 @@ Los contratos propuestos y sus decisiones pendientes están en [docs/interfaces/
 
 ## Estado inicial
 
-Repositorio en organización inicial. No se declara implementado ni validado ningún subsistema en esta base; no hay CI ni interfaces ROS 2 definitivas. La política de datos y artefactos debe definirse antes de incorporar datasets, grabaciones o pesos grandes.
+Repositorio en organización inicial. No se declara implementado ni validado ningún subsistema en esta base; hay CI para verificaciones estáticas y una prueba controlada de la puerta ROS; las pruebas ROS del robot siguen pendientes porque aún no hay paquetes, y las interfaces ROS 2 no son definitivas. La política de datos y artefactos debe definirse antes de incorporar datasets, grabaciones o pesos grandes.
