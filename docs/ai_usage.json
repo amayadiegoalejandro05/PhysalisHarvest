@@ -140,6 +140,42 @@
       ],
       "human_intervention": "Requisitos proporcionados por el responsable; revisión e integración humanas pendientes.",
       "verification": "Consultar verificaciones locales y GitHub Actions en el PR de migración."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-19",
+      "artifact_type": "paquete ROS 2, diagnóstico, prueba F0 y documentación",
+      "paths": [
+        "ros2_ws/src/robot_locomocion/bench_2wd/AGENTS.md",
+        "ros2_ws/src/robot_locomocion/bench_2wd/README.md",
+        "ros2_ws/src/robot_locomocion/bench_2wd/setup.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd/setup.cfg",
+        "ros2_ws/src/robot_locomocion/bench_2wd/resource/bench_2wd",
+        "ros2_ws/src/robot_locomocion/bench_2wd/package.xml",
+        "ros2_ws/src/robot_locomocion/bench_2wd/bench_2wd/__init__.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd/bench_2wd/receiver.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd/bench_2wd/smoke_test.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd/test/test_transport.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd/astra_click.py",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json"
+      ],
+      "human_intervention": "El responsable suministró los requisitos, el cableado declarado y la referencia Astra. Revisión humana pendiente.",
+      "verification": "En Jazzy sobre WSL 2 pasaron el verificador de repositorio, las 19 pruebas existentes, la compilación, colcon test y los ocho casos sintéticos por ROS 2. Se comprobó el hash del JSON externo."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-19",
+      "artifact_type": "firmware y clientes de ensayo, registros textuales y documentación",
+      "paths": [
+        "firmware/bench_2wd",
+        "ros2_ws/src/robot_locomocion/bench_2wd/README.md",
+        "README.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json"
+      ],
+      "human_intervention": "El operador preparó la escena de la cámara, supervisó la alimentación y la habilitación, realizó las lecturas de multímetro y confirmó el giro de las ruedas.",
+      "verification": "Revisión puntual RGB-depth de dos esquinas, eco de un XYZ real, secuencia en seco, ensayos de PWM y giro cualitativo supervisado. Los resultados desfavorables y límites figuran en firmware/bench_2wd/README.md."
     }
   ]
 }

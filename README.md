@@ -30,4 +30,4 @@ Los contratos propuestos y sus decisiones pendientes están en [docs/interfaces/
 
 ## Estado inicial
 
-Repositorio en organización inicial. No se declara implementado ni validado ningún subsistema en esta base; hay CI para verificaciones estáticas y una prueba controlada de la puerta ROS; las pruebas ROS del robot siguen pendientes porque aún no hay paquetes, y las interfaces ROS 2 no son definitivas. La política de datos y artefactos debe definirse antes de incorporar datasets, grabaciones o pesos grandes.
+Esta rama incluye el [banco ROS 2 del chasis 2WD](ros2_ws/src/robot_locomocion/bench_2wd/README.md) y los [ensayos ESP32 con sus registros](firmware/bench_2wd/README.md). El banco cubre el diagnóstico XYZ y pruebas acotadas con ruedas libres. Los contratos ROS 2 comunes y las pruebas de navegación quedan pendientes. Datasets, grabaciones y pesos grandes requieren la política de datos y artefactos.
