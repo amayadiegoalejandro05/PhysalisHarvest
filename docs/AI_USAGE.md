@@ -15,3 +15,5 @@ Codex asistió en la corrección del estado de CI del README principal solicitad
 Codex asistió en la política de sincronización y verificaciones Git; revisión humana y adopción pendientes.
 
 Codex asistió en la clasificación de rutas y el procedimiento de sincronización solicitado; revisión humana pendiente.
+
+Codex asistió en los cambios de nomenclatura, CI, verificador de contexto Git, pruebas y documentación de PhysalisHarvest. El responsable definió los requisitos y conserva la revisión e integración. Los resultados se registran en el PR de migración.

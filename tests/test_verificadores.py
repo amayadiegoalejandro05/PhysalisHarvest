@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import check_repository
@@ -81,7 +82,7 @@ class GitChecks(unittest.TestCase):
         (self.root / 'example').write_text('test')
         self.git('add', 'example')
         self.git('commit', '-qm', 'initial')
-        self.git('remote', 'add', 'origin', 'https://github.com/amayadiegoalejandro05/Robot-Cosechador.git')
+        self.git('remote', 'add', 'origin', 'https://github.com/amayadiegoalejandro05/PhysalisHarvest.git')
         self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
 
     def tearDown(self): self.temp.cleanup()
@@ -125,6 +126,7 @@ class GitChecks(unittest.TestCase):
         entries = {x['id']: x for x in report.checks}
         self.assertEqual(entries['GIT-TARGET-DIVERGENCE']['status'], 'SKIP')
         self.assertIn('divergente', entries['GIT-TARGET-DIVERGENCE']['explanation'])
+        self.assertIn('divergente', entries['GIT-MAIN-DIVERGENCE']['explanation'])
         self.assertEqual(entries['GIT-CONFLICTS']['status'], 'SKIP')
         self.assertIn('conflictos', entries['GIT-CONFLICTS']['explanation'])
 
@@ -167,8 +169,72 @@ class GitChecks(unittest.TestCase):
         self.assertEqual(result['GIT-SHARED'], 'PASS')
         self.assertEqual(result['GIT-CROSS'], 'SKIP')
 
+    def test_permanent_branches_target_main(self):
+        for name, area in (
+            ('feat/vision', 'vision'), ('feat/arm', 'brazo'),
+            ('feat/locomotion', 'locomocion'), ('feat/2WD', 'locomocion'),
+        ):
+            with self.subTest(branch=name):
+                self.git('switch', '-qc', name)
+                report = check_git_context.check(self.root, subsystem=area, environ={})
+                entries = {entry['id']: entry for entry in report.checks}
+                self.assertEqual(entries['GIT-SUBSYSTEM']['status'], 'PASS')
+                self.assertIn('origin/main', entries['GIT-TARGET-DIVERGENCE']['explanation'])
+                self.assertEqual('GIT-2WD' in entries, name == 'feat/2WD')
+                self.git('switch', '-q', 'main')
+
+    def test_2wd_branch_is_case_sensitive(self):
+        self.git('switch', '-qc', 'feat/2wd')
+        result = states(check_git_context.check(self.root, environ={}))
+        self.assertEqual(result['GIT-SUBSYSTEM'], 'FAIL')
+        self.assertNotIn('GIT-2WD', result)
+
+    def test_temporary_branch_infers_destination_and_pr_base_takes_precedence(self):
+        for source, destination in (
+            ('feature/vision-demo', 'feat/vision'), ('fix/arm-demo', 'feat/arm'),
+            ('test/locomotion-demo', 'feat/locomotion'), ('experiment/2WD-demo', 'feat/2WD'),
+        ):
+            with self.subTest(source=source):
+                self.git('switch', '-qc', source)
+                self.git('update-ref', 'refs/remotes/origin/' + destination, 'HEAD')
+                report = check_git_context.check(self.root, environ={})
+                self.assertEqual(states(report)['GIT-TARGET-DIVERGENCE'], 'PASS')
+                self.assertTrue(any('origin/' + destination in entry['explanation'] for entry in report.checks))
+                self.git('switch', '-q', 'main')
+        self.git('switch', '-qc', 'chore/repository-reorganization')
+        self.assertEqual(states(check_git_context.check(self.root, target='main', environ={}))['GIT-SUBSYSTEM'], 'SKIP')
+        self.git('switch', '--detach')
+        env = {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'pull_request',
+               'GITHUB_HEAD_REF': 'experiment/2WD-demo', 'GITHUB_BASE_REF': 'feat/locomotion'}
+        report = check_git_context.check(self.root, environ=env)
+        target = next(entry for entry in report.checks if entry['id'] == 'GIT-TARGET-DIVERGENCE')
+        self.assertIn('origin/feat/locomotion', target['explanation'])
+
+    def test_verifier_uses_only_read_operations(self):
+        self.git('switch', '-qc', 'experiment/2WD-read-only')
+        self.git('update-ref', 'refs/remotes/origin/feat/2WD', 'HEAD')
+        with patch.object(check_git_context, 'git', wraps=check_git_context.git) as git:
+            self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], 'PASS')
+        allowed = {'rev-parse', 'remote', 'symbolic-ref', 'rev-list', 'check-ref-format',
+                   'merge-base', 'merge-tree', 'diff', 'ls-files'}
+        for call in git.call_args_list:
+            args = call.args[1:]
+            if args[0] == '--no-optional-locks':
+                self.assertEqual(args[1], 'status')
+            else:
+                self.assertIn(args[0], allowed)
+            if args[0] == 'remote':
+                self.assertEqual(args[1], 'get-url')
+            if args[0] == 'merge-tree':
+                self.assertEqual(len(args), 4)
+                self.assertNotIn('--write-tree', args)
+
+    def test_wrong_push_url(self):
+        self.git('remote', 'set-url', '--push', 'origin', 'https://example.invalid/other.git')
+        self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], 'FAIL')
+
     def test_wrong_remote(self):
-        self.git('remote', 'set-url', 'origin', 'https://example.invalid/other.git')
+        self.git('remote', 'set-url', 'origin', 'https://github.com/amayadiegoalejandro05/Robot-Cosechador.git')
         self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], 'FAIL')
 
     def test_detached_pull_request_does_not_claim_source_is_current(self):

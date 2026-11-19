@@ -12,6 +12,7 @@ Responsabilidad: plataforma móvil, desplazamiento, localización, control y seg
 - Acuerde cambios compartidos con los equipos afectados antes de implementar contratos. No convierta recepción de datos en autorización de movimiento.
 - Conserve trazabilidad de IA y licencias según la política general; no incorpore materiales externos sin comprobar derechos.
 - Documente entorno, comandos, evidencia, fallos y limitaciones; distinga MOCK, simulación y pruebas físicas. No afirme validación sin criterios y evidencia.
-- Use ramas y PR revisados según la política general; no altere experimentos o trabajo ajeno.
+- Use `feat/locomotion` para el desarrollo principal y `feat/2WD` para el banco experimental. Incorporar resultados 2WD a la rama principal del área o a `main` exige revisión, pruebas y aprobación explícita.
+- Solicite revisión según la política general; no altere experimentos o trabajo ajeno.
 
 Antes de cada commit y PR aplique la política central de sincronización de la sección 11 de [AGENTS.md](../../../AGENTS.md), indicando destino y subsistema.

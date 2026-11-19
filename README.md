@@ -1,4 +1,4 @@
-# Robot Cosechador
+# PhysalisHarvest — Selective Cape Gooseberry Harvesting Robot
 
 Macroproyecto del semillero de investigación SEIMA de la Universitaria Agustiniana para explorar la cosecha selectiva de uchuva (*Physalis peruviana* L.) mediante un robot móvil manipulador.
 
@@ -12,7 +12,7 @@ Se prevé emplear ROS 2, Gazebo, Python, visión artificial, sensores RGB-D y si
 
 ## Ramas y colaboración
 
-`main` contiene versiones integradas y revisadas; `vision`, `brazo` y `locomocion` son ramas de desarrollo de los respectivos equipos. Las ramas temporales `feature/`, `fix/` y `experiment/` parten de la rama de trabajo correspondiente. Los cambios hacia `main` se proponen mediante pull request (PR), con revisión, evidencia y conflictos resueltos; no se integran automáticamente. Sincronizar periódicamente cada rama con `main` y coordinar las interfaces compartidas. Consulte [CONTRIBUTING.md](CONTRIBUTING.md).
+`main` contiene versiones integradas y revisadas; `feat/vision`, `feat/arm`, `feat/locomotion` y `feat/2WD` son las ramas permanentes de desarrollo. `feat/2WD` es el banco experimental de locomoción para un chasis de dos ruedas motrices. Las ramas temporales `feature/`, `fix/`, `experiment/`, `test/` y `chore/` parten de la rama de trabajo correspondiente. Los cambios hacia `main` se proponen mediante pull request (PR), con revisión, evidencia y conflictos resueltos; no se integran automáticamente. Sincronizar periódicamente cada rama con `main` y coordinar las interfaces compartidas. Consulte [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Estructura
 

@@ -6,7 +6,7 @@ Ubuntu nativo es la referencia Linux. En Windows nativo, use los verificadores P
 
 ## Comprobar sin instalar
 
-En Ubuntu o WSL2, desde la raíz del clon:
+Use el remoto `https://github.com/amayadiegoalejandro05/PhysalisHarvest.git`. En Ubuntu o WSL2, desde la raíz del clon:
 
 ```bash
 git status --short --branch

@@ -12,6 +12,7 @@ Responsabilidad: definición futura y versionado de contratos entre visión, bra
 - Acuerde cambios compartidos con los equipos afectados antes de implementar contratos. No convierta recepción de datos en autorización de movimiento.
 - Conserve trazabilidad de IA y licencias según la política general; no incorpore materiales externos sin comprobar derechos.
 - Documente entorno, comandos, evidencia, fallos y limitaciones; distinga MOCK, simulación y pruebas físicas. No afirme validación sin criterios y evidencia.
-- Use ramas y PR revisados según la política general; no altere experimentos o trabajo ajeno.
+- Coordine los PR de interfaces con los equipos afectados en `feat/vision`, `feat/arm`, `feat/locomotion` y, cuando corresponda, `feat/2WD`.
+- Solicite revisión según la política general; no altere experimentos o trabajo ajeno.
 
 Antes de cada commit y PR aplique la política central de sincronización de la sección 11 de [AGENTS.md](../../../AGENTS.md), indicando destino y subsistema.
