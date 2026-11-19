@@ -1,3 +1,7 @@
+## Rama fuente y destino
+
+Indique las ramas y SHA. Destinos permanentes: `main`, `feat/vision`, `feat/arm`, `feat/locomotion` y `feat/2WD`.
+
 ## Subsistema afectado
 
 ## Objetivo del cambio

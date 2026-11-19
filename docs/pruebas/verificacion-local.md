@@ -18,7 +18,7 @@ python3 scripts/check_git_context.py --target main --json /tmp/reporte-git.json
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-En PowerShell se recomienda guardar los informes fuera del repositorio o eliminarlos manualmente después de revisarlos. `--json` es opcional. Las pruebas usan repositorios temporales. Los comandos no hacen fetch ni modifican referencias. Para una comparación actualizada, verificar primero `origin` y ejecutar `git fetch origin` con autorización. Use `--target vision`, `brazo`, `locomocion` o `main` según el destino, y opcionalmente `--subsystem vision|brazo|locomocion`.
+En PowerShell se recomienda guardar los informes fuera del repositorio o eliminarlos manualmente después de revisarlos. `--json` es opcional. Las pruebas usan repositorios temporales. Los comandos no hacen fetch ni modifican referencias. Para una comparación actualizada, verificar primero `origin` y ejecutar `git fetch origin` con autorización. Use `--target` con `main`, `feat/vision`, `feat/arm`, `feat/locomotion` y `feat/2WD` según el destino, y opcionalmente `--subsystem vision|brazo|locomocion`. Para `feat/2WD` el área es `locomocion`. Sin destino explícito, el verificador usa la base del PR en CI, `main` para una rama permanente o la rama del área si el nombre temporal la identifica sin ambigüedad.
 
 Cada comprobación produce ID, PASS, FAIL o SKIP, explicación y acción. Un FAIL devuelve 1; una ejecución sin FAIL devuelve 0, incluso con SKIP. Errores de invocación o escritura del informe también producen salida distinta de cero. Un árbol con cambios sin confirmar o archivos no rastreados, incluido AGENTS.md local, se informa como SKIP en contexto Git para que se revise; no implica que sea indebido. Las comparaciones son contra referencias locales y no certifican su vigencia remota. En PR de GitHub Actions se identifica el HEAD separado y la comparación describe el commit comprobado, que puede ser un merge temporal, no la divergencia de la rama fuente.
 
@@ -36,7 +36,7 @@ Propuesta administrativa pendiente: proteger `main` con PR, CI estable, revisió
 
 ## Sincronización inicial mediante PR
 
-Solo después de la revisión e integración del PR de política en `main`, para cada una de `vision`, `brazo` y `locomocion`:
+Para sincronizar ramas ya publicadas, después de la revisión e integración de cambios de política en `main`, aplique estos pasos a `feat/vision`, `feat/arm`, `feat/locomotion` y `feat/2WD`:
 
 1. Conserve cambios locales; confirme `git remote -v`, estado, worktrees y, si hay autorización y conectividad, ejecute `git fetch origin`. Registre `git rev-parse origin/main` y `git rev-parse origin/<rama>`.
 2. Inspeccione `git log --left-right --oneline origin/<rama>...origin/main` y `git diff --stat origin/<rama>...origin/main`; compruebe commits exclusivos y cambios en contratos, TF, dependencias y CI. Si aparecen commits nuevos del equipo o conflictos, detenga esa sincronización y coordine su revisión. No resuelva sobrescribiendo trabajo.

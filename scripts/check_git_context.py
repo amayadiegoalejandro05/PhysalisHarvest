@@ -7,8 +7,24 @@ from pathlib import Path
 from check_common import Report, git
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED = 'github.com/amayadiegoalejandro05/Robot-Cosechador'
-SUBSYSTEMS = {'vision', 'brazo', 'locomocion'}
+EXPECTED = 'github.com/amayadiegoalejandro05/PhysalisHarvest'
+PERMANENT_BRANCHES = {
+    'feat/vision': 'vision',
+    'feat/arm': 'brazo',
+    'feat/locomotion': 'locomocion',
+    'feat/2WD': 'locomocion',
+}
+SUBSYSTEMS = set(PERMANENT_BRANCHES.values())
+TEMPORARY_BRANCH = re.compile(r'(feature|fix|experiment|test|chore)/[A-Za-z0-9._/-]+')
+AREA_BRANCHES = {
+    'vision': 'feat/vision',
+    'arm': 'feat/arm',
+    'brazo': 'feat/arm',
+    'locomotion': 'feat/locomotion',
+    'locomocion': 'feat/locomotion',
+    '2WD': 'feat/2WD',
+}
+ORIGIN_REF = 'refs/remotes/origin/'
 OWNED = {'robot_percepcion_decision': 'vision', 'robot_brazo': 'brazo', 'robot_locomocion': 'locomocion'}
 
 
@@ -38,10 +54,24 @@ def check(root, target=None, subsystem=None, environ=None):
         report.add('GIT-REPO', 'FAIL', 'No se encontró un repositorio Git.', 'Ejecutar en el repositorio correcto.')
         return report
     report.add('GIT-REPO', 'PASS', 'Repositorio: ' + top.stdout.strip(), 'Confirmar el directorio de trabajo.')
-    remote = run('remote', 'get-url', 'origin')
-    url = remote.stdout.strip()
-    valid = url in (f'https://{EXPECTED}', f'https://{EXPECTED}.git', f'git@{EXPECTED.replace("/", ":", 1)}', f'git@{EXPECTED.replace("/", ":", 1)}.git', f'ssh://git@{EXPECTED}', f'ssh://git@{EXPECTED}.git')
-    report.add('GIT-ORIGIN', 'PASS' if valid else 'FAIL', 'origin: ' + (url or 'no disponible'), 'Corregir origin antes de operaciones remotas.' if not valid else 'Verificar el destino antes de operar remotamente.')
+    fetch_urls = run('remote', 'get-url', '--all', 'origin')
+    push_urls = run('remote', 'get-url', '--push', '--all', 'origin')
+    accepted_urls = {
+        f'{base}{suffix}'
+        for base in (f'https://{EXPECTED}', f'git@{EXPECTED.replace("/", ":", 1)}', f'ssh://git@{EXPECTED}')
+        for suffix in ('', '.git')
+    }
+    valid_origin = all(
+        result.returncode == 0 and result.stdout.splitlines()
+        and set(result.stdout.splitlines()) <= accepted_urls
+        for result in (fetch_urls, push_urls)
+    )
+    report.add('GIT-ORIGIN', 'PASS' if valid_origin else 'FAIL',
+               f'origin de lectura y escritura verificado: {EXPECTED}.' if valid_origin
+               else f'Alguna URL de lectura o escritura de origin falta o no apunta a {EXPECTED}.',
+               'Confirmar el destino antes de operar.' if valid_origin else 'Revisar con git remote -v.')
+    if not valid_origin:
+        return report
     head = run('rev-parse', '--verify', 'HEAD')
     sha = head.stdout.strip()
     report.add('GIT-HEAD', 'PASS' if head.returncode == 0 and re.fullmatch(r'[0-9a-f]{40,64}', sha) else 'FAIL', 'HEAD: ' + (sha or 'no disponible'), 'Crear o recuperar un commit válido.' if head.returncode else 'Registrar este SHA en la evidencia.')
@@ -49,6 +79,10 @@ def check(root, target=None, subsystem=None, environ=None):
     branch = branch_result.stdout.strip()
     is_pr = env.get('GITHUB_ACTIONS') == 'true' and env.get('GITHUB_EVENT_NAME') in ('pull_request', 'pull_request_target')
     source = env.get('GITHUB_HEAD_REF', '') if is_pr else branch
+    permanent = source in PERMANENT_BRANCHES
+    temporary = TEMPORARY_BRANCH.fullmatch(source) is not None
+    hints = {AREA_BRANCHES[token] for token in re.split(r'[/_.-]', source.split('/', 1)[-1])
+             if token in AREA_BRANCHES} if temporary else set()
     if branch:
         report.add('GIT-BRANCH', 'PASS', 'Rama activa: ' + branch, 'Confirmar la rama antes de modificar.')
     elif is_pr and source:
@@ -58,7 +92,7 @@ def check(root, target=None, subsystem=None, environ=None):
     upstream = run('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}') if branch else None
     tracking = upstream.stdout.strip() if upstream and upstream.returncode == 0 else ''
     report.add('GIT-UPSTREAM', 'PASS' if tracking else 'SKIP', 'Seguimiento: ' + tracking if tracking else 'No hay seguimiento configurado o HEAD está separado.', 'Configurar seguimiento cuando se publique la rama.' if not tracking else 'Actualizar referencias antes de integrar.')
-    status = run('status', '--porcelain=v1', '--untracked-files=all')
+    status = run('--no-optional-locks', 'status', '--porcelain=v1', '--untracked-files=all')
     if status.returncode: report.add('GIT-WORKTREE', 'FAIL', 'No se pudo leer el estado.', 'Revisar el repositorio.')
     elif status.stdout: report.add('GIT-WORKTREE', 'SKIP', 'Hay cambios locales sin confirmar o archivos no rastreados (no se enumeran).', 'Revisar git status y conservar los cambios antes de integrar.')
     else: report.add('GIT-WORKTREE', 'PASS', 'Árbol de trabajo limpio.', 'Mantener evidencia de cambios.')
@@ -84,10 +118,22 @@ def check(root, target=None, subsystem=None, environ=None):
         report.add(identifier, state, f'{ref}: {relation}; HEAD detrás {behind}, delante {ahead} commits.' + suffix, 'Sincronizar o revisar la base antes de integrar; fetch puede revelar cambios nuevos.' if behind else 'Actualizar referencias antes de integrar; no se consulta la red.')
     compare('GIT-TRACKING-DIVERGENCE', tracking, 'Seguimiento')
     target_name = target or (env.get('GITHUB_BASE_REF') if is_pr else None)
-    if not target_name and source in SUBSYSTEMS | {'main'}: target_name = 'main' if source != 'main' else 'main'
-    target_ref = target_name if target_name and (target_name.startswith('origin/') or target_name.startswith('refs/')) else ('origin/' + target_name if target_name else None)
+    if not target_name:
+        if permanent or source == 'main':
+            target_name = 'main'
+        elif len(hints) == 1:
+            target_name = next(iter(hints))
+    target_ref = None
+    if target_name:
+        branch_name = target_name.removeprefix(ORIGIN_REF).removeprefix('origin/')
+        candidate = ORIGIN_REF + branch_name
+        if run('check-ref-format', candidate).returncode == 0 and not branch_name.startswith('refs/'):
+            target_ref = candidate
+        else:
+            report.add('GIT-TARGET-REF', 'FAIL', 'El destino debe identificar una rama de origin.',
+                       'Indicar el nombre de la rama remota, por ejemplo feat/vision.')
     compare('GIT-TARGET-DIVERGENCE', target_ref, 'Destino')
-    compare('GIT-MAIN-DIVERGENCE', 'origin/main', 'main')
+    compare('GIT-MAIN-DIVERGENCE', ORIGIN_REF + 'main', 'main')
     # A dry comparison of committed trees is advisory, never a merge or a guarantee.
     if not target_ref or (is_pr and not branch):
         report.add('GIT-CONFLICTS', 'SKIP', 'Destino o rama fuente no verificable en este checkout.', 'Comparar la rama fuente en un clon completo.')
@@ -107,7 +153,7 @@ def check(root, target=None, subsystem=None, environ=None):
     for args in [('diff', '--name-only', 'HEAD'), ('diff', '--cached', '--name-only'), ('ls-files', '--others', '--exclude-standard')]:
         result = run(*args)
         if result.returncode == 0: changes.update(result.stdout.splitlines())
-    for ref in {target_ref, 'origin/main'} - {None}:
+    for ref in {target_ref, 'refs/remotes/origin/main'} - {None}:
         base = run('merge-base', 'HEAD', ref)
         if base.returncode == 0:
             result = run('diff', '--name-only', base.stdout.strip(), ref)
@@ -123,14 +169,16 @@ def check(root, target=None, subsystem=None, environ=None):
     report.add('GIT-CROSS', 'SKIP' if cross else 'PASS', 'Cambios en varios subsistemas o en subsistema e integración compartida.' if cross else 'No se detectó combinación transversal por rutas.', 'Solicitar revisión conjunta de los equipos afectados.' if cross else 'Revisar manualmente el impacto semántico.')
     if grouped['other']:
         report.add('GIT-OTHER', 'SKIP', 'Rutas no clasificadas: ' + ', '.join(grouped['other']), 'Determinar responsables y posible impacto transversal manualmente.')
-    recognized = source in SUBSYSTEMS | {'main'} or bool(re.fullmatch(r'(feature|fix|experiment|test)/[A-Za-z0-9._/-]+', source))
+    recognized = permanent or temporary or source == 'main'
     if not source:
         report.add('GIT-SUBSYSTEM', 'SKIP', 'No se conoce la rama fuente.', 'Indicar la rama y el subsistema.')
     elif not recognized:
         report.add('GIT-SUBSYSTEM', 'FAIL', 'Rama no reconocida: ' + source, 'Usar una rama principal o prefijo temporal permitido.')
     else:
-        markers = {name for name in SUBSYSTEMS if re.search(r'(^|[/_.-])' + name + r'($|[/_.-])', source)}
-        if source in SUBSYSTEMS: markers.add(source)
+        markers = {PERMANENT_BRANCHES[source]} if permanent else {PERMANENT_BRANCHES[hint] for hint in hints}
+        if source == 'feat/2WD':
+            report.add('GIT-2WD', 'PASS', 'Rama experimental 2WD del área de locomoción.',
+                       'Revisar el banco por separado y exigir aprobación antes de integrar resultados.')
         if subsystem and (markers and markers != {subsystem} or source == 'main'):
             report.add('GIT-SUBSYSTEM', 'FAIL', f'Rama {source} incompatible con subsistema {subsystem}.', 'Usar una rama del subsistema indicado.')
         elif subsystem and not markers:
@@ -146,7 +194,7 @@ def check(root, target=None, subsystem=None, environ=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=ROOT)
-    parser.add_argument('--target', help='Rama destino, por ejemplo main o vision')
+    parser.add_argument('--target', help='Rama destino, por ejemplo main o feat/vision')
     parser.add_argument('--subsystem', choices=sorted(SUBSYSTEMS))
     parser.add_argument('--json', type=Path)
     args = parser.parse_args()

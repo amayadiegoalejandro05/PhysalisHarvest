@@ -115,6 +115,31 @@
       ],
       "human_intervention": "Corrección solicitada por el responsable; revisión pendiente.",
       "verification": "Pruebas unitarias y verificador estático; consultar ejecución del PR."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-19",
+      "artifact_type": "migración de nomenclatura, CI, verificador Git, pruebas y documentación",
+      "paths": [
+        ".github/workflows/ci.yml",
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        "scripts/check_git_context.py",
+        "tests/test_verificadores.py",
+        "README.md",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "docs/entorno-reproducible.md",
+        "docs/pruebas/ci.md",
+        "docs/pruebas/verificacion-local.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json",
+        "ros2_ws/src/robot_percepcion_decision/AGENTS.md",
+        "ros2_ws/src/robot_brazo/AGENTS.md",
+        "ros2_ws/src/robot_locomocion/AGENTS.md",
+        "ros2_ws/src/robot_interfaces/AGENTS.md"
+      ],
+      "human_intervention": "Requisitos proporcionados por el responsable; revisión e integración humanas pendientes.",
+      "verification": "Consultar verificaciones locales y GitHub Actions en el PR de migración."
     }
   ]
 }

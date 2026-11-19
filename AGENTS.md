@@ -1,8 +1,8 @@
-# AGENTS.md — Robot Cosechador
+# AGENTS.md — PhysalisHarvest
 
 ## 0. Aplicación y prioridad
 
-Estas reglas son obligatorias para los agentes de desarrollo que trabajen en `amayadiegoalejandro05/Robot-Cosechador`, macroproyecto del semillero SEIMA (Universitaria Agustiniana). Se aplican a **visión/percepción-decisión**, **brazo/manipulación** y **locomoción**, y a la integración común. Toda explicación, documentación e informe para el equipo se redacta en **español**; identificadores y mensajes de commit siguen las convenciones técnicas indicadas abajo.
+Estas reglas son obligatorias para los agentes de desarrollo que trabajen en `amayadiegoalejandro05/PhysalisHarvest`, macroproyecto del semillero SEIMA (Universitaria Agustiniana). Se aplican a **visión/percepción-decisión**, **brazo/manipulación** y **locomoción**, y a la integración común. Toda explicación, documentación e informe para el equipo se redacta en **español**; identificadores y mensajes de commit siguen las convenciones técnicas indicadas abajo.
 
 Antes de modificar archivos:
 1. Verifica repositorio, remoto `origin`, rama actual, `git status`, `git log` y diferencias con `origin/main`; no presupongas que `main` incluye un PR aún abierto.
@@ -15,9 +15,10 @@ Los documentos de la rama `main` integrada son la línea base vigente. Una propu
 
 ## 1. Responsabilidades y fronteras
 
-- **Visión (`vision`)**: imagen RGB-D, detección visual del cáliz de uchuva, XYZ de un punto superficial, evaluación de accesibilidad geométrica, selección, trayectoria cartesiana candidata, publicación y pruebas ROS 2. **No asumas que estima el centro del fruto, madurez, punto de corte, cinemática del brazo o cosecha efectiva**.
-- **Brazo (`brazo`)**: manipulador, cinemática, límites, ejecución/control y efector cuando sean realmente desarrollados y probados. Una trayectoria candidata de visión **no** demuestra que el brazo pueda ejecutarla.
-- **Locomoción (`locomocion`)**: base móvil, navegación, motores, localización y parada segura según el alcance que apruebe su equipo; no asumir capacidades implementadas.
+- **Visión (`feat/vision`)**: imagen RGB-D, detección visual del cáliz de uchuva, XYZ de un punto superficial, evaluación de accesibilidad geométrica, selección, trayectoria cartesiana candidata, publicación y pruebas ROS 2. **No asumas que estima el centro del fruto, madurez, punto de corte, cinemática del brazo o cosecha efectiva**.
+- **Brazo (`feat/arm`)**: manipulador, cinemática, límites, ejecución/control y efector cuando sean realmente desarrollados y probados. Una trayectoria candidata de visión **no** demuestra que el brazo pueda ejecutarla.
+- **Locomoción (`feat/locomotion`)**: base móvil, navegación, motores, localización y parada segura según el alcance que apruebe su equipo; no asumir capacidades implementadas.
+- **Banco 2WD (`feat/2WD`)**: experimentación de locomoción para comunicación y funcionamiento básico de un chasis de dos ruedas motrices. Cualquier ensayo de movimiento requiere montaje preparado y autorización. Integrar resultados en `feat/locomotion` o `main` exige revisión, pruebas y aprobación explícita.
 - **Integración**: interfaces ROS 2, TF, simulación del sistema, pruebas entre productor/consumidor y manejo de fallos. Los tres equipos revisan cambios transversales.
 
 No coloques lógica del brazo dentro del paquete de visión ni implementes copias de otros módulos para resolver dependencias. Emplea dobles de prueba (`MOCK`) deterministas y **explícitamente etiquetados** si falta un componente, sin afirmar integración real.
@@ -25,8 +26,8 @@ No coloques lógica del brazo dentro del paquete de visión ni implementes copia
 ## 2. Ramas y flujo de cambios
 
 - `main`: versión integrada; recibe cambios exclusivamente mediante PR revisado.
-- `vision`, `brazo`, `locomocion`: ramas de integración de cada subsistema; no son sustituto de la separación por paquetes.
-- Cambios cotidianos: crear rama corta desde la rama correspondiente, por ejemplo `feature/vision-calibracion-rgbd`, `fix/brazo-limites` o `test/locomocion-odometria`; PR primero hacia la rama de subsistema y, cuando el conjunto esté verificado, PR hacia `main` según `CONTRIBUTING.md`.
+- `feat/vision`, `feat/arm`, `feat/locomotion` y `feat/2WD`: ramas de integración de cada subsistema; no son sustituto de la separación por paquetes.
+- Cambios cotidianos: crear rama corta desde la rama correspondiente, por ejemplo `feature/vision-calibracion-rgbd`, `fix/arm-limites`, `test/locomotion-odometria` o `experiment/2WD-comunicacion`; PR primero hacia la rama de subsistema y, cuando el conjunto esté verificado, PR hacia `main` según `CONTRIBUTING.md`.
 - Mantén las ramas actualizadas con los cambios aceptados de `main` sin reescribir el historial compartido. Antes de hacer PR a `main`, comprueba el último commit de `origin/main` y posibles incompatibilidades.
 - Cambios a `robot_interfaces`, TF común, launch integrado, CI, dependencias compartidas o contratos: documenta primero la propuesta; requiere revisión de productores, consumidores y responsable de integración.
 - No hagas `push`, merge, release, cambios de protección, borrados remotos ni publicaciones sin autorización expresa. No uses `git push --force`, `git reset --hard`, bypass de hooks ni sobrescribas trabajo ajeno.
@@ -73,7 +74,7 @@ Emplea estados verificables: `PROYECTADO`, `IMPLEMENTADO`, `OBSERVADO_EN_SIMULAC
 
 ## 7. Autoría y transparencia de herramientas de IA
 
-Se mantiene como **política interna del Robot Cosechador** el estándar de transparencia inspirado en el documento previo de NASA Space Apps. **No se afirma que NASA imponga estas obligaciones al nuevo macroproyecto.**
+Se mantiene como **política interna de PhysalisHarvest** el estándar de transparencia inspirado en el documento previo de NASA Space Apps. **No se afirma que NASA imponga estas obligaciones al nuevo macroproyecto.**
 
 - El agente no se acredita como autor, coautor, copropietario ni colaborador humano. No añade `Co-authored-by` de IA ni slogans o publicidad opcional (`Generated by ...`) en commits, README o releases.
 - La prohibición de créditos promocionales **no** elimina las declaraciones de uso de IA ni las atribuciones de terceros, académicas o legales. No ocultar el empleo de IA para aparentar autoría humana exclusiva.
@@ -117,4 +118,4 @@ Antes de cada commit, verifique repositorio y `origin`, rama y SHA, revise `git 
 
 Antes de cada PR, confirme rama, subsistema y destino, verifique la base de destino y compatibilidad con main, ejecute CI y pruebas aplicables y registre SHA, resultados y bloqueos. Los cambios en contratos, TF, dependencias, CI o estructura requieren revisión humana; interfaces requieren revisión conjunta de productores, consumidores y responsables de integración. No confunda atraso con conflicto; no haga merges automáticos.
 
-Las ramas `feature/vision-*`, `feature/brazo-*` y `feature/locomocion-*` nacen de `vision`, `brazo` y `locomocion`, respectivamente. Los subsistemas se proponen a `main` por PR. Si no puede verificar conectividad o referencias, registre la limitación en vez de afirmar que están actualizadas.
+Las ramas temporales usan `feature/`, `fix/`, `experiment/`, `test/` y `chore/`. Parten de la rama permanente del área y abren PR hacia ella. Los cambios transversales de repositorio pueden partir de `main` y proponerse por PR hacia `main`. Los subsistemas se proponen a `main` por PR. Si no puede verificar conectividad o referencias, registre la limitación en vez de afirmar que están actualizadas.

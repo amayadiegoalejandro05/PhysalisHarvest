@@ -2,9 +2,9 @@ name: Verificación inicial
 
 on:
   pull_request:
-    branches: [main, vision, brazo, locomocion]
+    branches: [main, feat/vision, feat/arm, feat/locomotion, feat/2WD]
   push:
-    branches: [main, vision, brazo, locomocion]
+    branches: [main, feat/vision, feat/arm, feat/locomotion, feat/2WD]
   workflow_dispatch:
 
 permissions:
