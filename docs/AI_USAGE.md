@@ -17,3 +17,5 @@ Codex asistió en la política de sincronización y verificaciones Git; revisió
 Codex asistió en la clasificación de rutas y el procedimiento de sincronización solicitado; revisión humana pendiente.
 
 Codex asistió en los cambios de nomenclatura, CI, verificador de contexto Git, pruebas y documentación de PhysalisHarvest. El responsable definió los requisitos y conserva la revisión e integración. Los resultados se registran en el PR de migración.
+
+Registro de integración del 19 de noviembre de 2026. ChatGPT asistió en la preparación de `AGENTS.md`, `CONTRIBUTING.md` y `README.md` v2. El responsable seleccionó y copió las versiones al clon local. Codex auditó su coherencia, comprobó la integridad y la sintaxis Mermaid, preparó correcciones mínimas y ejecutó los verificadores y las pruebas unitarias para el PR documental. La revisión y la fusión corresponden al responsable.
