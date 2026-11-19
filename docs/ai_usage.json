@@ -140,6 +140,20 @@
       ],
       "human_intervention": "Requisitos proporcionados por el responsable; revisión e integración humanas pendientes.",
       "verification": "Consultar verificaciones locales y GitHub Actions en el PR de migración."
+    },
+    {
+      "tool": "ChatGPT y Codex",
+      "date": "2026-11-19",
+      "artifact_type": "documentación de ingeniería v2",
+      "paths": [
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "README.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json"
+      ],
+      "human_intervention": "El responsable seleccionó y copió los documentos preparados con asistencia de ChatGPT. Codex auditó y preparó el PR para revisión humana.",
+      "verification": "Comparación SHA-256, validación de dos bloques Mermaid, verificadores de repositorio y contexto Git y pruebas unitarias."
     }
   ]
 }
