@@ -1,5 +1,10 @@
 # Ensayos ESP32 del banco 2WD
 
+El firmware actual para un marcador ArUco está en
+[`drv8833_ros`](drv8833_ros/drv8833_ros.ino). Su cableado, contrato y
+procedimiento están en la [guía DRV8833](../../ros2_ws/src/robot_locomocion/bench_2wd_drv8833/README.md).
+Los ensayos descritos más abajo son antecedentes del banco.
+
 Este directorio conserva el código desarrollado con asistencia de Codex y los registros textuales de los ensayos del 19 de noviembre de 2026. El montaje y la observación de las ruedas estuvieron a cargo del operador. El [paquete ROS 2](../../ros2_ws/src/robot_locomocion/bench_2wd/README.md) describe el cableado declarado, la calibración externa y la reproducción de F0.
 
 ## Reproducción
@@ -42,4 +47,6 @@ python firmware/bench_2wd/tools/camera_sequence_dry.py --arm-dry
 
 La etiqueta serial `FORWARD` corresponde a GPIO 25 y 27 en alto, y `REVERSE` a GPIO 26 y 14. Se mantiene la polaridad observada en este montaje. Volver a comprobarla tras cambiar el cableado. Los registros no incluyen imágenes, calibración privada ni binarios. La observación física del giro fue cualitativa. La corriente del motor, la tensión instantánea de salida, la velocidad y la distancia de frenado quedaron pendientes de caracterización.
 
-La siguiente etapa propuesta es detectar un marcador de color, seguirlo con la Astra frontal y comprobar una parada a 50 cm con referencia independiente. Quedan por acordar el primer color, la referencia de los 50 cm, la extrínseca de cámara, el accionamiento mínimo y la gestión de obstáculos. El comando de movimiento sigue separado de las observaciones ROS. El recorrido por varios colores queda para una etapa posterior.
+La etapa actual emplea un marcador ArUco fijo. La extrínseca de cámara,
+la distancia final de parada, el accionamiento mínimo y la gestión de
+obstáculos siguen pendientes para ensayos con desplazamiento.

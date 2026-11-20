@@ -21,3 +21,10 @@ Codex asistió en la clasificación de rutas y el procedimiento de sincronizaci�
 Codex asistió en los cambios de nomenclatura, CI, verificador de contexto Git, pruebas y documentación de PhysalisHarvest. El responsable definió los requisitos y conserva la revisión e integración. Los resultados se registran en el PR de migración.
 
 El 19 de noviembre de 2026, Codex asistió en el banco 2WD, la captura y el análisis puntual de calibración, el transporte ROS/USB, los sketches y clientes de diagnóstico, y la consolidación de los registros textuales. El operador confirmó el cableado declarado, supervisó la alimentación y el corte, preparó las mediciones y observó el giro. [Resultados y límites](../firmware/bench_2wd/README.md).
+
+El 19 de noviembre de 2026, Codex preparó el visor ArUco de solo diagnóstico, su documentación y el script que codifica con OpenCV los marcadores sintéticos 0, 1 y 2. El responsable definió las indicaciones de corrección y la parada a 0,50 m. [Uso del visor](../ros2_ws/src/robot_locomocion/bench_2wd/README.md#visor-local-aruco).
+
+El 20 de noviembre de 2026, Codex adaptó el banco ArUco al DRV8833,
+modificó el armado ROS 2, preparó el lanzador Python y documentó la
+reproducción desde un clon. El operador suministró el cableado y pidió
+la auditoría sin ensayos físicos. [Procedimiento y evidencia](../ros2_ws/src/robot_locomocion/bench_2wd_drv8833/README.md)

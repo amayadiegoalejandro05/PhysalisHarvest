@@ -64,6 +64,41 @@ py -3.11 -m venv .venv
 
 Para instalaciones con otro nombre de distro, usar `--distro <nombre>`. Cerrar otras aplicaciones que usen la cámara. Con alimentación de motores desconectada, hacer clic en una región con profundidad válida. Observar `ros2 topic echo /bench_2wd/receipt`. El criterio de aceptación de transporte es ver `received` y un XYZ coherente con la muestra publicada. Registrar el SHA, hash de calibración, modo, reloj y salida. Usar Esc para cerrar el visor. Evitar los modos `--enviar-ros` y `--rostros` del visor externo y el puente serie del servo durante este ensayo.
 
+## Visor local ArUco
+
+Para la primera prueba, coloca [el ID 0](marcadores_aruco/aruco_4x4_50_id_00.png)
+en un respaldo plano y opaco, con el margen blanco visible. Los IDs 1 y 2
+quedan disponibles para futuras pruebas. El marcador puede imprimirse o
+mostrarse en una pantalla para comprobar el reconocimiento RGB. La prueba de
+distancia requiere una superficie que entregue profundidad estable.
+
+El visor usa OpenCV en Windows y la misma captura, calibración y proyección
+RGB–depth de la prueba anterior. Con la potencia de motores desconectada y el
+puerto serie cerrado, ejecútalo desde la raíz en PowerShell con el entorno
+`.venv-astra` existente:
+
+```powershell
+$astra = (Resolve-Path ../COORDENADAS_ORBBECASTRA).Path
+$sdk = Read-Host 'Ruta NiViewer de OpenNI 2.3.0.86 Win64'
+$calibration = Join-Path $astra 'resultados/calibracion_caja_evaluada.json'
+& .\.venv-astra\Scripts\python.exe -B .\ros2_ws\src\robot_locomocion\bench_2wd\astra_aruco.py `
+    --source $astra --sdk $sdk --calibration $calibration --rgb-index 1 --id 0
+```
+
+La ventana muestra el ID, su centro, la profundidad alineada y una muestra
+XYZ en metros en el marco óptico de la Astra. Las indicaciones son visuales.
+El criterio inicial de centrado es ±3° sobre `atan2(X, Z)`. Z es axial y la
+parada a 0,50 m se refiere a la cámara. Con un marcador centrado, comprueba
+la referencia con cinta. El alcance útil cerca de 0,50 m queda por medir.
+Si no hay una muestra interior consistente, se pierde el ID o hay dos
+marcadores con el ID objetivo, el visor indica PARAR. Pulsa Esc para cerrar.
+
+Para regenerar los tres PNG, usa el mismo script con `--generar`. OpenCV
+codifica los marcadores de forma determinista. Conserva el margen blanco
+al recortar la página.
+
+La opción `--ros` entrega el ID 0 al [banco experimental DRV8833](../bench_2wd_drv8833/README.md).
+
 ## Montaje declarado y trabajo físico pendiente
 
 | Elemento | Datos de montaje declarados, pendientes de inspección |

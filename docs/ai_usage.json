@@ -176,6 +176,39 @@
       ],
       "human_intervention": "El operador preparó la escena de la cámara, supervisó la alimentación y la habilitación, realizó las lecturas de multímetro y confirmó el giro de las ruedas.",
       "verification": "Revisión puntual RGB-depth de dos esquinas, eco de un XYZ real, secuencia en seco, ensayos de PWM y giro cualitativo supervisado. Los resultados desfavorables y límites figuran en firmware/bench_2wd/README.md."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-19",
+      "artifact_type": "visor de diagnóstico, documentación y marcadores sintéticos codificados con OpenCV",
+      "paths": [
+        "ros2_ws/src/robot_locomocion/bench_2wd/astra_aruco.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd/marcadores_aruco/",
+        "ros2_ws/src/robot_locomocion/bench_2wd/README.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json"
+      ],
+      "human_intervention": "El responsable definió la prueba con un marcador, las indicaciones de corrección y la parada a 0,50 m.",
+      "verification": "Con OpenCV 4.11.0 se decodificaron los tres PNG y se comprobaron indicaciones de avance, corrección, parada por umbral axial, profundidad inválida e ID incorrecto con entradas sintéticas. El visor abrió la Astra con OpenNI 2.3.0.86 y mostró el estado sin marcador. La distancia real requiere referencia independiente."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-20",
+      "artifact_type": "controlador ROS 2 experimental, firmware DRV8833, puente, pruebas y documentación",
+      "paths": [
+        "ros2_ws/src/robot_locomocion/bench_2wd/astra_aruco.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd_drv8833/",
+        "firmware/bench_2wd/drv8833_ros/",
+        "firmware/bench_2wd/tools/drv8833_ros_usb.py",
+        "firmware/bench_2wd/tools/reproducir_drv8833.py",
+        "firmware/bench_2wd/tools/test/test_drv8833_bridge.py",
+        "docs/interfaces/bench-2wd-drv8833.md",
+        "README.md",
+        "docs/AI_USAGE.md",
+        "docs/ai_usage.json"
+      ],
+      "human_intervention": "El operador suministró el cableado DRV8833, definió el armado sin marcador y pidió auditoría sin ensayo físico.",
+      "verification": "Compilación ROS 2 Jazzy/WSL 2 y Arduino ESP32 3.3.12. La guía del banco registra las pruebas sintéticas y MOCK. No se cargó firmware ni se accionó el montaje nuevo."
     }
   ]
 }

@@ -8,7 +8,7 @@ Macroproyecto del semillero de investigación SEIMA de la Universitaria Agustini
 - **Brazo:** modelado, cinemática, control del manipulador e integración del efector final.
 - **Locomoción:** plataforma móvil, control de motores, desplazamiento, navegación y posicionamiento.
 
-Se prevé emplear ROS 2, Gazebo, Python, visión artificial, sensores RGB-D y sistemas embebidos según las necesidades de cada equipo. Las versiones, plataformas y dependencias aún deben acordarse y documentarse. Las carpetas son reservas de organización: no son paquetes ROS 2 funcionales ni pruebas de integración o validación física.
+Se prevé emplear ROS 2, Gazebo, Python, visión artificial, sensores RGB-D y sistemas embebidos según las necesidades de cada equipo. El banco 2WD usa ROS 2 Jazzy y tiene dependencias y pruebas propias. La integración de los tres subsistemas se documenta por separado.
 
 ## Ramas y colaboración
 
@@ -18,7 +18,7 @@ Se prevé emplear ROS 2, Gazebo, Python, visión artificial, sensores RGB-D y si
 
 ```text
 .github/                 Plantilla de PR y flujo de CI
-ros2_ws/src/             Futuros paquetes de los tres subsistemas e interfaces
+ros2_ws/src/             Subsistemas, interfaces y paquetes ROS 2 del banco
 simulacion/              Gazebo y modelos
 firmware/                Software embebido
 hardware/                Documentación del brazo y la locomoción
@@ -28,6 +28,12 @@ tests/                   Pruebas transversales futuras
 
 Los contratos propuestos y sus decisiones pendientes están en [docs/interfaces/contratos-ros2.md](docs/interfaces/contratos-ros2.md). La integración depende de acuerdos entre equipos y evidencia de pruebas.
 
-## Estado inicial
+## Banco 2WD en esta rama
 
-Esta rama incluye el [banco ROS 2 del chasis 2WD](ros2_ws/src/robot_locomocion/bench_2wd/README.md) y los [ensayos ESP32 con sus registros](firmware/bench_2wd/README.md). El banco cubre el diagnóstico XYZ y pruebas acotadas con ruedas libres. Los contratos ROS 2 comunes y las pruebas de navegación quedan pendientes. Datasets, grabaciones y pesos grandes requieren la política de datos y artefactos.
+El [procedimiento DRV8833](ros2_ws/src/robot_locomocion/bench_2wd_drv8833/README.md)
+cubre la instalación desde un clon, el cableado, el firmware ESP32 y los
+comandos para dirigir el banco con un ArUco ID 0. Consulta el [contrato ROS 2
+y serial](docs/interfaces/bench-2wd-drv8833.md) y el [diagnóstico RGB-D](ros2_ws/src/robot_locomocion/bench_2wd/README.md).
+El movimiento físico con esta versión y el recorrido de varios marcadores
+quedan pendientes. Los [ensayos históricos del banco](firmware/bench_2wd/README.md)
+conservan sus resultados y límites.
