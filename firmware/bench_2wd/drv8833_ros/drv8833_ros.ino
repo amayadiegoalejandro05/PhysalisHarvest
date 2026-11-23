@@ -3,12 +3,15 @@
 
 // STBY se habilita externamente. 00 en cada puente deja el motor libre.
 constexpr uint8_t pins[] = {25, 26, 27, 14};
-constexpr uint32_t watchdogMs = 150;
+constexpr uint32_t watchdogMs = 250;
 constexpr uint32_t directionPauseMs = 100;
-constexpr uint32_t sessionMs = 8000;
+constexpr uint32_t pwmHz = 1000;
+constexpr uint8_t pwmBits = 8;
+constexpr uint8_t motorDuty = 255;
+constexpr uint8_t leftForwardDuty = 242;
+bool pwmReady = true;
 
 bool armed = false;
-uint32_t armedAt = 0;
 uint32_t lastContact = 0;
 uint32_t stoppedAt = 0;
 char requested = 'S';
@@ -18,7 +21,14 @@ size_t length = 0;
 bool overflow = false;
 
 void stopOutputs(uint32_t now) {
-  for (uint8_t pin : pins) digitalWrite(pin, LOW);
+  for (uint8_t pin : pins) {
+    if (!ledcWrite(pin, 0)) {
+      ledcDetach(pin);
+      digitalWrite(pin, LOW);
+      pinMode(pin, OUTPUT);
+      pwmReady = false;
+    }
+  }
   if (active != 'S') stoppedAt = now;
   active = 'S';
 }
@@ -30,7 +40,7 @@ void disarm(uint32_t now) {
 }
 
 void expire(uint32_t now) {
-  if (armed && (now - lastContact >= watchdogMs || now - armedAt >= sessionMs)) {
+  if (armed && now - lastContact >= watchdogMs) {
     disarm(now);
   }
 }
@@ -41,15 +51,21 @@ void updateMotion(uint32_t now) {
     if (active != 'S') {
       stopOutputs(now);
     } else if (now - stoppedAt >= directionPauseMs) {
-      digitalWrite(pins[requested == 'L' ? 1 : 0], HIGH);
-      digitalWrite(pins[requested == 'R' ? 3 : 2], HIGH);
+      const bool left = requested == 'L' || requested == 'Q';
+      const uint8_t leftDuty = requested == 'F' ? leftForwardDuty : motorDuty;
+      if (!pwmReady || !ledcWrite(pins[left ? 1 : 0], leftDuty) ||
+          !ledcWrite(pins[requested == 'R' ? 3 : 2], motorDuty)) {
+        pwmReady = false;
+        disarm(now);
+        return;
+      }
       active = requested;
     }
   }
 }
 
 bool isDirection(char value) {
-  return value == 'F' || value == 'L' || value == 'R';
+  return value == 'F' || value == 'L' || value == 'R' || value == 'Q';
 }
 
 void handle(uint32_t now) {
@@ -57,17 +73,17 @@ void handle(uint32_t now) {
   buffer[length] = '\0';
   if (!overflow && strcmp(buffer, "ID") == 0) {
     disarm(now);
-    Serial.println("DRV8833_ROS_V1");
+    Serial.println(pwmReady ? "DRV8833_ROS_V5" : "ERR PWM");
     return;
   }
   if (!overflow && length == 1 && buffer[0] == 'S') {
     disarm(now);
-  } else if (!overflow && length == 2 && buffer[0] == 'C' &&
+  } else if (pwmReady && !overflow && length == 2 && buffer[0] == 'C' &&
              isDirection(buffer[1]) && !armed) {
     armed = true;
     requested = buffer[1];
-    armedAt = lastContact = now;
-  } else if (!overflow && length == 1 && isDirection(buffer[0]) && armed) {
+    lastContact = now;
+  } else if (pwmReady && !overflow && length == 1 && isDirection(buffer[0]) && armed) {
     requested = buffer[0];
     lastContact = now;
   } else {
@@ -76,14 +92,22 @@ void handle(uint32_t now) {
     return;
   }
   updateMotion(now);
-  Serial.printf("OK %s %d%d%d%d\n", buffer, digitalRead(pins[0]), digitalRead(pins[1]),
-                digitalRead(pins[2]), digitalRead(pins[3]));
+  if (!pwmReady) {
+    Serial.println("ERR PWM");
+    return;
+  }
+  const char* outputs = "0000";
+  if (active == 'F') outputs = "1010";
+  else if (active == 'L' || active == 'Q') outputs = "0110";
+  else if (active == 'R') outputs = "1001";
+  Serial.printf("OK %s %s\n", buffer, outputs);
 }
 
 void setup() {
   for (uint8_t pin : pins) {
     digitalWrite(pin, LOW);
     pinMode(pin, OUTPUT);
+    if (!ledcAttach(pin, pwmHz, pwmBits)) pwmReady = false;
   }
   disarm(millis());
   Serial.begin(115200);

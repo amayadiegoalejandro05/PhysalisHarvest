@@ -15,6 +15,7 @@ setup(
             "controller = bench_2wd_drv8833.controller:main",
             "aruco_source = bench_2wd_drv8833.aruco_source:main",
             "session = bench_2wd_drv8833.session:main",
+            "monitor = bench_2wd_drv8833.monitor:main",
         ]
     },
 )

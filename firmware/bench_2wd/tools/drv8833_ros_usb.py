@@ -1,16 +1,24 @@
 """Puente local Windows ↔ controlador ROS 2 en WSL ↔ ESP32 por USB."""
 
 import argparse
-from contextlib import suppress
+from contextlib import nullcontext, suppress
+import os
 from pathlib import Path
+from queue import Empty, Queue
 import subprocess
 import sys
+from threading import Event, Thread
 import time
 
-FIRMWARE = "DRV8833_ROS_V1"
-PATTERNS = {"F": "1010", "L": "0110", "R": "1001", "S": "0000"}
-MOVEMENT = {"CF", "CL", "CR", "F", "L", "R"}
+
+FIRMWARE = "DRV8833_ROS_V5"
+PATTERNS = {"F": "1010", "L": "0110", "R": "1001", "Q": "0110", "S": "0000"}
+MOVEMENT = {"CF", "CL", "CR", "CQ", "F", "L", "R", "Q"}
 MAX_QUEUE_NS = 125_000_000
+
+
+class CommandAgeError(ValueError):
+    pass
 
 
 def open_link(port):
@@ -25,6 +33,8 @@ def open_link(port):
             return
         if "_ROS_V" in reply:
             raise RuntimeError(f"Firmware incompatible ({reply}). Carga {FIRMWARE} con VM cortada.")
+        if reply == "ERR PWM":
+            raise RuntimeError("El ESP32 bloqueó el movimiento por un fallo de inicialización PWM.")
         time.sleep(0.15)
     raise RuntimeError(
         f"Sin respuesta {FIRMWARE}. Confirma la carga y pulsa EN/RESET con BOOT suelto y VM cortada."
@@ -49,30 +59,76 @@ def read_command(line, now_ns):
     if command in MOVEMENT and (
         not -30_000_000 <= now_ns - int(stamp) <= MAX_QUEUE_NS or now_ns >= int(deadline)
     ):
-        raise ValueError("Orden vencida. Revisa la latencia y el reloj de Windows/WSL")
+        age = (now_ns - int(stamp)) / 1e6
+        remaining = (int(deadline) - now_ns) / 1e6
+        raise CommandAgeError(f"Orden vencida (edad {age:.0f} ms, margen {remaining:.0f} ms). Revisa Windows/WSL.")
     return command
 
 
-def run(port, args):
+def run(port, args, shutdown=None, measure=None):
     root = Path(__file__).resolve().parents[3]
     shell = (
         "source /opt/ros/jazzy/setup.bash && source install/setup.bash && "
         f"export ROS_DOMAIN_ID={args.domain_id} ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST && "
         "exec ros2 run bench_2wd_drv8833 controller"
     )
+    parameters = ["-p bridge_ready:=true"] if shutdown is not None else []
+    if route := getattr(args, "ruta", None):
+        parameters.append("-p 'ruta:=[" + ",".join(map(str, route)) + "]'")
+    if parameters:
+        shell += " --ros-args " + " ".join(parameters)
     with subprocess.Popen(
         ["wsl.exe", "-d", args.distro, "--cd", str(root / "ros2_ws"), "--", "bash", "-lc", shell],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding="utf-8",
     ) as controller:
         try:
             last_reply = None
-            for line in controller.stdout:
-                command = read_command(line, time.time_ns())
+            def lines():
+                if shutdown is None:
+                    yield from controller.stdout
+                    return
+                pending = Queue()
+
+                def read():
+                    for line in controller.stdout:
+                        pending.put(line)
+                    pending.put(None)
+
+                Thread(target=read, daemon=True).start()
+                while not shutdown.is_set():
+                    try:
+                        line = pending.get(timeout=0.05)
+                    except Empty:
+                        continue
+                    if line is None:
+                        return
+                    yield line
+
+            ready = shutdown is None
+            for line in lines():
+                if shutdown is not None and shutdown.is_set():
+                    break
+                if not ready and line.strip() == "CONTROLLER_READY":
+                    ready = True
+                    print("CONTROLLER_READY", flush=True)
+                    continue
+                if not ready:
+                    raise RuntimeError("El controlador administrado no confirmó su inicio")
+                offset = getattr(args, "clock_offset_ns", 0)
+                if measure is not None and line.rstrip().endswith((" CF", " CL", " CR")):
+                    offset = args.clock_offset_ns = measure(warm=True)
+                try:
+                    command = read_command(line, time.monotonic_ns() + offset)
+                except CommandAgeError:
+                    if measure is None:
+                        raise
+                    offset = args.clock_offset_ns = measure(warm=True)
+                    command = read_command(line, time.monotonic_ns() + offset)
                 reply = exchange(port, command)
                 if reply != last_reply or command == "S":
                     print(reply, flush=True)
                     last_reply = reply
-            if controller.wait(timeout=2):
+            if not (shutdown is not None and shutdown.is_set()) and controller.wait(timeout=2):
                 raise RuntimeError("El controlador ROS terminó. Revisa su diagnóstico en esta terminal.")
         finally:
             try:
@@ -89,15 +145,32 @@ def run(port, args):
 
 def main():
     import serial
+    from wsl_clock import clock_probe
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", required=True)
     parser.add_argument("--distro", default="Ubuntu-24.04")
     parser.add_argument("--domain-id", type=int, default=83, choices=range(1, 102), metavar="1..101")
     parser.add_argument("--check", action="store_true", help="Comprueba identidad y parada sin iniciar ROS")
+    parser.add_argument("--managed", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--ruta", nargs="+", type=int, choices=range(50), metavar="ID")
     args = parser.parse_args()
+    if args.ruta and len(set(args.ruta)) != len(args.ruta):
+        parser.error("La ruta requiere IDs únicos.")
+    shutdown = Event() if args.managed else None
+    if shutdown is not None:
+        def watch():
+            try:
+                os.read(sys.stdin.fileno(), 1)
+            finally:
+                shutdown.set()
+
+        Thread(target=watch, daemon=True).start()
     try:
-        with serial.Serial(baudrate=115200, timeout=0.10, write_timeout=0.10) as port:
+        reference = nullcontext(None) if args.check else clock_probe(args.distro)
+        with reference as measure, serial.Serial(baudrate=115200, timeout=0.10, write_timeout=0.10) as port:
+            if measure:
+                args.clock_offset_ns = measure()
             port.dtr = port.rts = False
             port.port = args.port
             try:
@@ -109,8 +182,8 @@ def main():
                 ) from error
             open_link(port)
             print(exchange(port, "S"), flush=True)
-            if not args.check:
-                run(port, args)
+            if not args.check and (shutdown is None or not shutdown.is_set()):
+                run(port, args, shutdown, measure)
     except KeyboardInterrupt:
         return 130
     except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:

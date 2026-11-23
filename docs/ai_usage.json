@@ -209,6 +209,102 @@
       ],
       "human_intervention": "El operador suministró el cableado DRV8833, definió el armado sin marcador y pidió auditoría sin ensayo físico.",
       "verification": "Compilación ROS 2 Jazzy/WSL 2 y Arduino ESP32 3.3.12. La guía del banco registra las pruebas sintéticas y MOCK. No se cargó firmware ni se accionó el montaje nuevo."
+    },
+    {
+      "tool": "Codex y generador de imágenes integrado",
+      "date": "2026-11-20",
+      "artifact_type": "consola Windows, monitor ROS 2, pruebas, escena de vista previa y emblema",
+      "paths": [
+        "firmware/bench_2wd/tools/consola_2wd.py",
+        "firmware/bench_2wd/tools/wsl_clock.py",
+        "firmware/bench_2wd/tools/assets/physalisharvest-2wd.png",
+        "firmware/bench_2wd/tools/drv8833_ros_usb.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd/astra_aruco.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd_drv8833/",
+        "docs/interfaces/bench-2wd-drv8833.md",
+        "README.md"
+      ],
+      "human_intervention": "El operador definió la consola, la ruta prevista y el uso del símbolo recortado en la cabecera.",
+      "verification": "Inspección visual de Tk en modo desconectado y pruebas ROS en Jazzy y transporte MOCK. Cámara y puerto serie físicos fuera de la prueba."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-20",
+      "artifact_type": "ruta ArUco, búsqueda acotada, pruebas y documentación",
+      "paths": [
+        "firmware/bench_2wd/tools/consola_2wd.py",
+        "firmware/bench_2wd/tools/drv8833_ros_usb.py",
+        "firmware/bench_2wd/tools/reproducir_drv8833.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd/astra_aruco.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd_drv8833/",
+        "docs/interfaces/bench-2wd-drv8833.md"
+      ],
+      "human_intervention": "El operador definió la ruta de tres marcadores, búsqueda izquierda y límite de cinco segundos.",
+      "verification": "ROS 2 Jazzy con datos sintéticos y frontera serial MOCK. Detección múltiple OpenCV sobre imágenes sintéticas. Cámara y ESP32 desconectados."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-20",
+      "artifact_type": "PWM de corrección y sondeo, control ROS y pruebas",
+      "paths": [
+        "firmware/bench_2wd/drv8833_ros/",
+        "firmware/bench_2wd/tools/drv8833_ros_usb.py",
+        "firmware/bench_2wd/tools/consola_2wd.py",
+        "firmware/bench_2wd/tools/test/test_drv8833_bridge.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd_drv8833/",
+        "docs/interfaces/bench-2wd-drv8833.md"
+      ],
+      "human_intervention": "El operador reportó pérdida de nitidez durante los giros y pidió sondeo sin límite total y estado Esperando ArUco.",
+      "verification": "Compilación y pruebas de software con datos sintéticos y GPIO/serial MOCK. Sin actuación física."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-20",
+      "artifact_type": "Alineación ArUco por pulsos y PWM simétrico",
+      "paths": [
+        "firmware/bench_2wd/drv8833_ros/",
+        "ros2_ws/src/robot_locomocion/bench_2wd_drv8833/",
+        "docs/interfaces/bench-2wd-drv8833.md"
+      ],
+      "human_intervention": "El operador pidió alinear antes de avanzar y fijó un mínimo de 85 % de PWM durante el movimiento, con corrección menor que avance.",
+      "verification": "Casos sintéticos ROS y GPIO MOCK. La respuesta mecánica queda pendiente de verificación."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-20",
+      "artifact_type": "Firmware DRV8833 V4 y verificación de versión en el puente y la consola",
+      "paths": [
+        "firmware/bench_2wd/drv8833_ros/",
+        "firmware/bench_2wd/tools/",
+        "ros2_ws/src/robot_locomocion/bench_2wd_drv8833/README.md",
+        "docs/interfaces/bench-2wd-drv8833.md"
+      ],
+      "human_intervention": "El operador solicitó 100 % de PWM durante el movimiento y conservar la lógica de sondeo.",
+      "verification": "GPIO y USB MOCK, sin ensayo físico."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-20",
+      "artifact_type": "Ajuste de pulsos y confirmación de alineación en ROS 2",
+      "paths": [
+        "ros2_ws/src/robot_locomocion/bench_2wd_drv8833/",
+        "docs/interfaces/bench-2wd-drv8833.md"
+      ],
+      "human_intervention": "El operador propuso pulsos de 100 ms y pausas de 500 ms y autorizó la prueba.",
+      "verification": "Prueba ROS 2 Jazzy con datos sintéticos, sin actuación física."
+    },
+    {
+      "tool": "Codex",
+      "date": "2026-11-20",
+      "artifact_type": "Sondeo sin profundidad local y ajuste de avance DRV8833 V5",
+      "paths": [
+        "firmware/bench_2wd/",
+        "ros2_ws/src/robot_locomocion/bench_2wd/astra_aruco.py",
+        "ros2_ws/src/robot_locomocion/bench_2wd_drv8833/",
+        "docs/interfaces/bench-2wd-drv8833.md"
+      ],
+      "human_intervention": "El operador reportó deriva hacia la derecha y solicitó sondear cuando el marcador visible carece de profundidad válida.",
+      "verification": "Datos sintéticos y GPIO/USB simulados. Calibración física pendiente."
     }
   ]
 }

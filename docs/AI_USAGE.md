@@ -28,3 +28,41 @@ El 20 de noviembre de 2026, Codex adaptó el banco ArUco al DRV8833,
 modificó el armado ROS 2, preparó el lanzador Python y documentó la
 reproducción desde un clon. El operador suministró el cableado y pidió
 la auditoría sin ensayos físicos. [Procedimiento y evidencia](../ros2_ws/src/robot_locomocion/bench_2wd_drv8833/README.md)
+
+El 20 de noviembre de 2026, Codex implementó la consola Windows, el
+monitor ROS y una escena sintética para la vista previa. La herramienta
+integrada de generación de imágenes produjo el emblema de cáliz, fruto y
+chasis de dos ruedas. El operador pidió mostrar solo el símbolo en la
+cabecera. El PNG fuente conserva la atribución. La escena de vista previa
+es una ilustración por OpenCV y se identifica como simulación.
+
+El 20 de noviembre de 2026, Codex implementó la ruta ArUco configurable
+y el escaneo de cinco segundos. El responsable definió el orden inicial
+y pidió verificarlo con cámara y ESP32 desconectados. Se usaron datos
+sintéticos y transporte MOCK.
+
+El 20 de noviembre de 2026, Codex revisó los giros por el desenfoque
+reportado por el operador. Implementó PWM para corrección y sondeo,
+pulsos de búsqueda sin límite total y el estado Esperando ArUco.
+La verificación se limitó a software con datos sintéticos y GPIO/serial MOCK.
+
+El 20 de noviembre de 2026, Codex ajustó la transición de sondeo a avance
+tras el reporte de parada al detectar el marcador en el piso. El operador
+pidió un mínimo de 85 % de PWM durante el movimiento y menor PWM en
+corrección que en avance. Se agregaron pulsos de alineación y pruebas
+con coordenadas sintéticas, sin ensayo físico de este cambio.
+
+El 20 de noviembre de 2026, a petición del operador, Codex configuró V4
+al 100 % de PWM en ambas ruedas durante avance, corrección y sondeo.
+El puente y la consola distinguen V4 de las compilaciones V3. La
+verificación de salidas y comunicación se realizó con GPIO y USB MOCK.
+
+El 20 de noviembre de 2026, Codex ajustó el control ROS a pulsos de
+100 ms y pausas de 500 ms por solicitud del operador. Añadió la
+confirmación del centro con dos cuadros nuevos y probó esa transición
+con datos sintéticos y sin actuación física.
+
+El 20 de noviembre de 2026, Codex separó el ArUco visible sin profundidad
+local de una captura inválida y añadió a V5 un ajuste de avance para la
+deriva a la derecha reportada por el operador. El ajuste inicial se
+verifica en software. Su calibración física queda pendiente.

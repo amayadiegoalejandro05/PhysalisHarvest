@@ -16,6 +16,20 @@ inline void delay(unsigned int) {}
 inline void pinMode(int, int) {}
 inline void digitalWrite(int pin, int value) { levels[pin] = value; }
 inline int digitalRead(int pin) { return levels[pin]; }
+inline bool attached[40] = {};
+inline uint32_t duties[40] = {};
+inline int failPwmPin = -1;
+inline bool ledcAttach(int pin, uint32_t, uint8_t) { return attached[pin] = true; }
+inline bool ledcDetach(int pin) {
+  attached[pin] = false;
+  duties[pin] = 0;
+  return true;
+}
+inline bool ledcWrite(int pin, uint32_t duty) {
+  if (!attached[pin] || pin == failPwmPin) return false;
+  duties[pin] = duty;
+  return true;
+}
 
 struct MockSerial {
   std::deque<char> input;

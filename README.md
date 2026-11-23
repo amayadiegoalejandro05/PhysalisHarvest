@@ -30,10 +30,19 @@ Los contratos propuestos y sus decisiones pendientes están en [docs/interfaces/
 
 ## Banco 2WD en esta rama
 
+Desde PowerShell en la raíz, abre la consola Windows en modo desconectado:
+
+```powershell
+& .\.venv-astra\Scripts\python.exe -B .\firmware\bench_2wd\tools\consola_2wd.py --vista-previa
+```
+
+Para operar el banco, usa el mismo comando sin `--vista-previa` y sigue
+la [secuencia de la consola](ros2_ws/src/robot_locomocion/bench_2wd_drv8833/README.md#consola-windows).
+
 El [procedimiento DRV8833](ros2_ws/src/robot_locomocion/bench_2wd_drv8833/README.md)
 cubre la instalación desde un clon, el cableado, el firmware ESP32 y los
-comandos para dirigir el banco con un ArUco ID 0. Consulta el [contrato ROS 2
+comandos para dirigir el banco al primer ArUco válido observado. Consulta el [contrato ROS 2
 y serial](docs/interfaces/bench-2wd-drv8833.md) y el [diagnóstico RGB-D](ros2_ws/src/robot_locomocion/bench_2wd/README.md).
-El movimiento físico con esta versión y el recorrido de varios marcadores
-quedan pendientes. Los [ensayos históricos del banco](firmware/bench_2wd/README.md)
+La ruta de varios marcadores queda pendiente de prueba física.
+Los [ensayos históricos del banco](firmware/bench_2wd/README.md)
 conservan sus resultados y límites.

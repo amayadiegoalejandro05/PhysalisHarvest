@@ -39,6 +39,8 @@ def viewer(args):
     ]
     if args.sha256:
         command.extend(("--sha256", args.sha256))
+    if route := getattr(args, "ruta", None):
+        command.extend(("--ruta", *map(str, route)))
     return command
 
 
@@ -53,6 +55,7 @@ def main():
     parser.add_argument("--sdk", type=Path)
     parser.add_argument("--calibracion", type=Path)
     parser.add_argument("--sha256")
+    parser.add_argument("--ruta", nargs="+", type=int, choices=range(50), metavar="ID")
     args = parser.parse_args()
     try:
         if args.accion == "compilar":
@@ -66,6 +69,8 @@ def main():
             ]
             if args.accion == "identificar":
                 command.append("--check")
+            elif args.ruta:
+                command.extend(("--ruta", *map(str, args.ruta)))
         else:
             setup = (
                 "source /opt/ros/jazzy/setup.bash && source install/setup.bash && "
