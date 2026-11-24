@@ -56,14 +56,15 @@ def check(root, target=None, subsystem=None, environ=None):
     report.add('GIT-REPO', 'PASS', 'Repositorio: ' + top.stdout.strip(), 'Confirmar el directorio de trabajo.')
     fetch_urls = run('remote', 'get-url', '--all', 'origin')
     push_urls = run('remote', 'get-url', '--push', '--all', 'origin')
+    # GitHub does not distinguish case in owner or repository names.
     accepted_urls = {
-        f'{base}{suffix}'
+        f'{base}{suffix}'.lower()
         for base in (f'https://{EXPECTED}', f'git@{EXPECTED.replace("/", ":", 1)}', f'ssh://git@{EXPECTED}')
         for suffix in ('', '.git')
     }
     valid_origin = all(
         result.returncode == 0 and result.stdout.splitlines()
-        and set(result.stdout.splitlines()) <= accepted_urls
+        and {url.lower() for url in result.stdout.splitlines()} <= accepted_urls
         for result in (fetch_urls, push_urls)
     )
     report.add('GIT-ORIGIN', 'PASS' if valid_origin else 'FAIL',
