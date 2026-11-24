@@ -279,6 +279,13 @@ class GitChecks(unittest.TestCase):
         self.git('remote', 'set-url', '--push', 'origin', 'https://example.invalid/other.git')
         self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], 'FAIL')
 
+    def test_sin_base_comun_no_da_pass(self):
+        self.git('update-ref', '-d', 'refs/remotes/origin/main')
+        self.git('switch', '-qc', 'feature/vision-demo')
+        result = states(check_git_context.check(self.root, target='main', environ={}))
+        for key in ('GIT-INCOMING', 'GIT-SHARED', 'GIT-CROSS'):
+            self.assertEqual(result[key], 'SKIP')
+
     def test_detached_pull_request_does_not_claim_source_is_current(self):
         self.git('switch', '--detach')
         env = {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'pull_request', 'GITHUB_HEAD_REF': 'feature/vision-test', 'GITHUB_BASE_REF': 'main'}
