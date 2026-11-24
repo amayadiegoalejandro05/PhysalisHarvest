@@ -167,23 +167,28 @@ def check(root, target=None, subsystem=None, environ=None):
         if result.returncode == 0: changes.update(result.stdout.splitlines())
     incoming = set()
     base_ref = target_ref or main_ref
-    if merge_base(base_ref):
+    committed_known = bool(merge_base(base_ref))
+    if committed_known:
         own = run('diff', '--name-only', merge_base(base_ref), 'HEAD')
         if own.returncode == 0: changes.update(own.stdout.splitlines())
         result = run('diff', '--name-only', merge_base(base_ref), base_ref)
         if result.returncode == 0: incoming.update(result.stdout.splitlines())
     overlap = sorted(changes & incoming)
-    report.add('GIT-INCOMING', 'SKIP' if overlap else 'PASS',
-               'Archivos modificados también en ' + base_ref.removeprefix(ORIGIN_REF) + ': ' + ', '.join(overlap) if overlap
-               else f'{len(incoming)} archivos cambiados en el destino desde la base común; ninguno coincide con los propios.',
-               'Sincronizar con el destino y revisar esos archivos con sus responsables.' if overlap else 'Sincronizar antes de integrar si hay cambios entrantes.')
+    unknown = f'Sin base común con {base_ref.removeprefix(ORIGIN_REF)}: solo se examinaron cambios sin confirmar.'
+    if not committed_known:
+        report.add('GIT-INCOMING', 'SKIP', unknown, 'Obtener la rama destino (git fetch origin) y repetir.')
+    else:
+        report.add('GIT-INCOMING', 'SKIP' if overlap else 'PASS',
+                   'Archivos modificados también en ' + base_ref.removeprefix(ORIGIN_REF) + ': ' + ', '.join(overlap) if overlap
+                   else f'{len(incoming)} archivos cambiados en el destino desde la base común; ninguno coincide con los propios.',
+                   'Sincronizar con el destino y revisar esos archivos con sus responsables.' if overlap else 'Sincronizar antes de integrar si hay cambios entrantes.')
     grouped = {group: sorted(p for p in changes if classify_path(p) == group) for group in ('vision', 'brazo', 'locomocion', 'shared', 'other')}
     risky = grouped['shared']
     owners = [group for group in ('vision', 'brazo', 'locomocion') if grouped[group]]
     report.add('GIT-OWNERS', 'PASS' if owners else 'SKIP', '; '.join(f'{owner}: {", ".join(grouped[owner])}' for owner in owners) if owners else 'No se detectaron rutas exclusivas de subsistema.', 'Revisar propiedad y semántica de los cambios.')
-    report.add('GIT-SHARED', 'SKIP' if risky else 'PASS', 'Rutas compartidas para revisar: ' + ', '.join(risky) if risky else 'Sin rutas compartidas conocidas en los cambios examinados.', 'Solicitar revisión de integración y equipos afectados.' if risky else 'La clasificación por rutas no garantiza compatibilidad ROS ni detecta toda dependencia.')
+    report.add('GIT-SHARED', 'PASS' if committed_known and not risky else 'SKIP', 'Rutas compartidas para revisar: ' + ', '.join(risky) if risky else ('Sin rutas compartidas conocidas en los cambios examinados.' if committed_known else unknown), 'Solicitar revisión de integración y equipos afectados.' if risky else 'La clasificación por rutas no garantiza compatibilidad ROS ni detecta toda dependencia.')
     cross = len(owners) > 1 or bool(risky and owners)
-    report.add('GIT-CROSS', 'SKIP' if cross else 'PASS', 'Cambios en varios subsistemas o en subsistema e integración compartida.' if cross else 'No se detectó combinación transversal por rutas.', 'Solicitar revisión conjunta de los equipos afectados.' if cross else 'Revisar manualmente el impacto semántico.')
+    report.add('GIT-CROSS', 'PASS' if committed_known and not cross else 'SKIP', 'Cambios en varios subsistemas o en subsistema e integración compartida.' if cross else ('No se detectó combinación transversal por rutas.' if committed_known else unknown), 'Solicitar revisión conjunta de los equipos afectados.' if cross else 'Revisar manualmente el impacto semántico.')
     if grouped['other']:
         report.add('GIT-OTHER', 'SKIP', 'Rutas no clasificadas: ' + ', '.join(grouped['other']), 'Determinar responsables y posible impacto transversal manualmente.')
     recognized = permanent or temporary or source == 'main'
