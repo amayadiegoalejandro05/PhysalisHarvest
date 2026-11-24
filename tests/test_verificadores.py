@@ -60,6 +60,19 @@ class RepositoryChecks(unittest.TestCase):
         self.assertEqual(result['REP-CONTENT'], 'FAIL')
         self.assertEqual(result['REP-AI'], 'FAIL')
 
+    def test_sin_falsos_positivos(self):
+        (self.root / '.env.example').write_text('EXAMPLE=1\n')
+        (self.root / 'README.md').write_text('```\n[x](no-existe.md)\n```\n`[y](falta.md)`\n')
+        (self.root / '.gitignore').write_text('node_modules/\n')
+        (self.root / 'node_modules').mkdir()
+        (self.root / 'node_modules/bad.json').write_text('{')
+        result = states(check_repository.check(self.root))
+        self.assertEqual(result['REP-CONTENT'], 'PASS')
+        self.assertEqual(result['REP-LINKS'], 'PASS')
+        self.assertEqual(result['REP-JSON'], 'SKIP')
+        (self.root / '.env').write_text('X=1\n')
+        self.assertEqual(states(check_repository.check(self.root))['REP-CONTENT'], 'FAIL')
+
     def test_valid_and_invalid_yaml_when_parser_available(self):
         try:
             import yaml  # noqa: F401
@@ -116,9 +129,43 @@ class GitChecks(unittest.TestCase):
         entries = {x['id']: x for x in report.checks}
         self.assertEqual(entries['GIT-TARGET-DIVERGENCE']['status'], 'SKIP')
         self.assertIn('divergente', entries['GIT-TARGET-DIVERGENCE']['explanation'])
-        self.assertIn('divergente', entries['GIT-MAIN-DIVERGENCE']['explanation'])
+        self.assertNotIn('GIT-MAIN-DIVERGENCE', entries)
         self.assertEqual(entries['GIT-CONFLICTS']['status'], 'SKIP')
-        self.assertIn('conflictos', entries['GIT-CONFLICTS']['explanation'])
+        self.assertIn('example', entries['GIT-CONFLICTS']['explanation'])
+        self.assertEqual(entries['GIT-INCOMING']['status'], 'SKIP')
+
+    def test_borrado_frente_a_modificacion_es_conflicto(self):
+        self.git('switch', '-qc', 'feature/vision-demo')
+        self.git('rm', '-q', 'example')
+        self.git('commit', '-qm', 'delete')
+        self.git('switch', '-q', 'main')
+        (self.root / 'example').write_text('remote')
+        self.git('commit', '-qam', 'modify')
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('switch', '-q', 'feature/vision-demo')
+        before = sorted(p.name for p in (self.root / '.git/objects').iterdir())
+        self.assertEqual(states(check_git_context.check(self.root, target='main', environ={}))['GIT-CONFLICTS'], 'SKIP')
+        self.assertEqual(sorted(p.name for p in (self.root / '.git/objects').iterdir()), before)
+
+    def test_cambios_entrantes_no_son_propios(self):
+        self.git('switch', '-qc', 'feature/vision-demo')
+        own = self.root / 'ros2_ws/src/robot_percepcion_decision/node.py'
+        own.parent.mkdir(parents=True)
+        own.write_text('value = 1\n')
+        self.git('add', '-A')
+        self.git('commit', '-qm', 'vision')
+        self.git('switch', '-q', 'main')
+        other = self.root / 'ros2_ws/src/robot_brazo/node.py'
+        other.parent.mkdir(parents=True)
+        other.write_text('value = 1\n')
+        self.git('add', '-A')
+        self.git('commit', '-qm', 'arm')
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('switch', '-q', 'feature/vision-demo')
+        entries = {item['id']: item for item in check_git_context.check(self.root, target='main', environ={}).checks}
+        self.assertEqual(entries['GIT-CROSS']['status'], 'PASS')
+        self.assertNotIn('brazo', entries['GIT-OWNERS']['explanation'])
+        self.assertEqual(entries['GIT-INCOMING']['status'], 'PASS')
 
     def test_vision_interna_no_alerta_contrato(self):
         self.git('switch', '-qc', 'feature/vision-interna')
@@ -215,8 +262,8 @@ class GitChecks(unittest.TestCase):
             if args[0] == 'remote':
                 self.assertEqual(args[1], 'get-url')
             if args[0] == 'merge-tree':
-                self.assertEqual(len(args), 4)
-                self.assertNotIn('--write-tree', args)
+                scratch = Path(call.kwargs['env']['GIT_OBJECT_DIRECTORY'])
+                self.assertNotIn(self.root.resolve(), scratch.resolve().parents)
 
     def test_origin_urls(self):
         for url, expected in (

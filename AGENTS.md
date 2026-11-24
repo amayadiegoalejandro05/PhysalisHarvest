@@ -137,12 +137,14 @@ Para brazo/efector aplica la misma disciplina: límites de movimiento, colisión
 
 ## 8. Pruebas y GitHub Actions
 
-La CI existente en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) se ejecuta sobre `main` y las cuatro ramas permanentes, y en PR dirigidos a ellas. Comprende:
+La CI existente en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) se ejecuta en push a `main` y en PR dirigidos a `main` o a las ramas permanentes. Comprende:
 
 - **Verificación estática y pruebas:** scripts de repositorio, contexto Git y unit tests existentes.
-- **ROS 2 Jazzy:** detecta `package.xml` bajo `ros2_ws/src/`; si no los encuentra, declara **SKIP**, no compilación exitosa del robot.
-- **Prueba controlada de puerta ROS:** ejercita la infraestructura de detección de fallos con un paquete **temporal y aislado**, no con paquetes de PhysalisHarvest.
+- **Detectar paquetes ROS:** busca `package.xml` bajo `ros2_ws/src/`; si no los encuentra, declara **SKIP**, no compilación exitosa del robot.
+- **ROS 2 Jazzy:** compila y prueba los paquetes; solo se ejecuta cuando existen manifiestos.
 - **Resumen y trazabilidad:** SHA, ramas, estado de jobs y limitaciones declaradas.
+
+La **prueba controlada de puerta ROS** está en [`.github/workflows/ros-gate.yml`](.github/workflows/ros-gate.yml): ejercita la infraestructura de detección de fallos con un paquete **temporal y aislado**, no con paquetes de PhysalisHarvest, y solo se ejecuta cuando cambian sus scripts o de forma manual.
 
 Cuando existan paquetes reales, ejecuta `colcon build`, `colcon test` y `colcon test-result --verbose` desde el entorno adecuado, además de pruebas unitarias, integración/launch y contrato que correspondan. No agregues paquetes de muestra permanentes para hacer verde la CI. Una prueba que no pudo ejecutarse es `NOT RUN`/`SKIP`, nunca `PASS`. Revisa logs y artefactos antes de afirmar la causa de un fallo.
 

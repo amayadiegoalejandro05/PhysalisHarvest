@@ -15,4 +15,4 @@ Responsabilidad: RGB-D, detección del cáliz, XYZ superficial, accesibilidad, s
 - Use `feat/vision` como base y destino habitual de los PR del área.
 - Solicite revisión según la política general; no altere experimentos o trabajo ajeno.
 
-Antes de cada commit y PR aplique la política central de sincronización de la sección 11 de [AGENTS.md](../../../AGENTS.md), indicando destino y subsistema.
+Antes de cada commit y PR aplique la preparación y la política de ramas de las secciones 1 y 4 de [AGENTS.md](../../../AGENTS.md), indicando destino y subsistema.
