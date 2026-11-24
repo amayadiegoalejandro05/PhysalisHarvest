@@ -20,7 +20,16 @@ EXCLUDE = {'.git', '.venv', 'venv', 'env', '__pycache__', 'build', 'install', 'l
 
 
 def files(root):
-    return [p for p in root.rglob('*') if p.is_file() and not (set(p.relative_to(root).parts) & EXCLUDE)]
+    """Tracked and non-ignored files, the same set Git would publish; None outside Git."""
+    listing = git(root, 'ls-files', '-z', '--cached', '--others', '--exclude-standard')
+    if listing.returncode:
+        return None
+    return [root / name for name in sorted(set(listing.stdout.split('\0')) - {''}) if (root / name).is_file()]
+
+
+def strip_code(markdown):
+    markdown = re.sub(r'(?ms)^ {0,3}(`{3,}|~{3,}).*?^ {0,3}\1[^\n]*$', '', markdown)
+    return re.sub(r'`[^`\n]*`', '', markdown)
 
 
 def check(root):
@@ -29,6 +38,9 @@ def check(root):
     missing = [p for p in FILES if not (root / p).is_file()] + [p for p in DIRS if not (root / p).is_dir()]
     report.add('REP-STRUCTURE', 'FAIL' if missing else 'PASS', 'Faltan: ' + ', '.join(missing) if missing else 'Estructura y documentación requeridas presentes.', 'Restaurar las rutas requeridas.' if missing else 'Mantener la estructura acordada.')
     paths = files(root)
+    in_git = paths is not None
+    if not in_git:
+        paths = [p for p in root.rglob('*') if p.is_file() and not (set(p.relative_to(root).parts) & EXCLUDE)]
     for suffix, identifier in [('.py', 'REP-PYTHON'), ('.json', 'REP-JSON'), ('.yaml', 'REP-YAML')]:
         selected = [p for p in paths if p.suffix.lower() in (('.yaml', '.yml') if suffix == '.yaml' else (suffix,))]
         if suffix == '.yaml':
@@ -47,7 +59,7 @@ def check(root):
             except Exception as exc:
                 errors.append(f'{p.relative_to(root)}: {type(exc).__name__}')
         report.add(identifier, 'FAIL' if errors else ('PASS' if selected else 'SKIP'), '; '.join(errors) if errors else f'{len(selected)} archivos examinados.', 'Corregir la sintaxis.' if errors else 'Revisar al agregar archivos.')
-    manifests = [p for p in (root / 'ros2_ws/src').rglob('package.xml') if not (set(p.relative_to(root).parts) & EXCLUDE)] if (root / 'ros2_ws/src').exists() else []
+    manifests = [p for p in paths if p.name == 'package.xml' and p.relative_to(root).parts[:2] == ('ros2_ws', 'src')]
     errors = []
     names = set()
     for p in manifests:
@@ -62,23 +74,24 @@ def check(root):
     report.add('REP-ROS-MANIFEST', 'FAIL' if errors else ('PASS' if manifests else 'SKIP'), 'Manifiestos inválidos: ' + ', '.join(errors) if errors else f'{len(manifests)} manifiestos reales examinados; las carpetas reservadas no son paquetes.', 'Corregir XML y nombres.' if errors else 'Comprobar paquetes cuando se implementen.')
     broken = []
     for p in [p for p in paths if p.suffix.lower() == '.md']:
-        content = p.read_text(encoding='utf-8-sig')
-        # Inline links and images; anchors are not validated.
+        content = strip_code(p.read_text(encoding='utf-8-sig'))
+        # Inline links and images outside code; anchors are not validated.
         for raw in re.findall(r'!?\[[^\]]*\]\(\s*(<[^>]+>|[^\s)]+)', content):
             target = raw.strip('<>')
             parts = urlsplit(target)
             if parts.scheme or parts.netloc or not parts.path: continue
-            if not (p.parent / unquote(parts.path)).exists(): broken.append(f'{p.relative_to(root)} → {target}')
+            # GitHub resolves a leading slash from the repository root.
+            local = root / unquote(parts.path).lstrip('/') if parts.path.startswith('/') else p.parent / unquote(parts.path)
+            if not local.exists(): broken.append(f'{p.relative_to(root)} → {target}')
     report.add('REP-LINKS', 'FAIL' if broken else 'PASS', '; '.join(broken) if broken else 'Enlaces locales Markdown examinados.', 'Corregir rutas.' if broken else 'Revisar anclas y enlaces complejos manualmente.')
-    listing = git(root, 'ls-files', '-z', '--cached', '--others', '--exclude-standard')
-    if listing.returncode:
+    if not in_git:
         report.add('REP-CONTENT', 'FAIL', 'No se pudo enumerar el contenido de Git.', 'Ejecutar dentro de un repositorio Git.')
     else:
         problems = []
         secret = re.compile(rb'(?i)(?:api[_-]?key|token|password|secret)\s*[=:]\s*["\'][^"\'\r\n]{12,}["\']|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|ghp_[A-Za-z0-9]{30,}')
-        forbidden = re.compile(r'(?i)(?:^|/)(?:\.venv|venv|datasets|build|install|log)/|(?:^|/)\.env(?:\.|$)|\.(?:pem|key|bag|db3|mcap|pt|pth|onnx|engine|weights)$')
-        for name in sorted(set(listing.stdout.split('\0')) - {''}):
-            p = root / name
+        forbidden = re.compile(r'(?i)(?:^|/)(?:\.venv|venv|datasets|build|install|log)/|(?:^|/)\.env(?:$|\.(?!example$))|\.(?:pem|key|bag|db3|mcap|pt|pth|onnx|engine|weights)$')
+        for p in paths:
+            name = p.relative_to(root).as_posix()
             if forbidden.search(name): problems.append(name + ' (ruta restringida)')
             if not p.is_file() or p.is_symlink(): continue
             if p.stat().st_size > 10 * 1024 * 1024: problems.append(name + ' (>10 MiB)'); continue

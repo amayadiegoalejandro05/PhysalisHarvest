@@ -46,7 +46,7 @@ class RepositoryChecks(unittest.TestCase):
             self.assertEqual(result[key], 'FAIL')
         (self.root / 'bad.py').write_text('value = 1\n')
         (self.root / 'bad.json').write_text('{}')
-        (self.root / 'README.md').write_text('[válido](CONTRIBUTING.md)', encoding='utf-8')
+        (self.root / 'README.md').write_text('[válido](CONTRIBUTING.md) [raíz](/docs/pruebas/README.md)', encoding='utf-8')
         p.write_text('<package><name>robot_brazo</name></package>')
         result = states(check_repository.check(self.root))
         for key in ('REP-PYTHON', 'REP-JSON', 'REP-LINKS', 'REP-ROS-MANIFEST'):
@@ -59,6 +59,19 @@ class RepositoryChecks(unittest.TestCase):
         result = states(check_repository.check(self.root))
         self.assertEqual(result['REP-CONTENT'], 'FAIL')
         self.assertEqual(result['REP-AI'], 'FAIL')
+
+    def test_sin_falsos_positivos(self):
+        (self.root / '.env.example').write_text('EXAMPLE=1\n')
+        (self.root / 'README.md').write_text('```\n[x](no-existe.md)\n```\n`[y](falta.md)`\n')
+        (self.root / '.gitignore').write_text('node_modules/\n')
+        (self.root / 'node_modules').mkdir()
+        (self.root / 'node_modules/bad.json').write_text('{')
+        result = states(check_repository.check(self.root))
+        self.assertEqual(result['REP-CONTENT'], 'PASS')
+        self.assertEqual(result['REP-LINKS'], 'PASS')
+        self.assertEqual(result['REP-JSON'], 'SKIP')
+        (self.root / '.env').write_text('X=1\n')
+        self.assertEqual(states(check_repository.check(self.root))['REP-CONTENT'], 'FAIL')
 
     def test_valid_and_invalid_yaml_when_parser_available(self):
         try:
@@ -89,15 +102,6 @@ class GitChecks(unittest.TestCase):
     def git(self, *args):
         return subprocess.run(['git', '-C', str(self.root), *args], check=True, capture_output=True, text=True)
 
-    def test_target_not_required_to_equal_head(self):
-        self.git('switch', '-qc', 'feature/vision-test')
-        (self.root / 'example').write_text('changed')
-        self.git('commit', '-qam', 'change')
-        result = states(check_git_context.check(self.root, target='main', subsystem='vision', environ={}))
-        self.assertEqual(result['GIT-TARGET-DIVERGENCE'], 'PASS')
-        self.assertEqual(result['GIT-SUBSYSTEM'], 'PASS')
-        self.assertEqual(result['GIT-UPSTREAM'], 'SKIP')
-
     def test_old_base_dirty_and_wrong_subsystem(self):
         self.git('switch', '-qc', 'feature/brazo-demo')
         old = self.git('rev-parse', 'HEAD').stdout.strip()
@@ -109,7 +113,6 @@ class GitChecks(unittest.TestCase):
         env = {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'pull_request', 'GITHUB_HEAD_REF': 'feature/brazo-demo', 'GITHUB_BASE_REF': 'main'}
         result = states(check_git_context.check(self.root, subsystem='vision', environ=env))
         self.assertEqual(result['GIT-BRANCH'], 'SKIP')
-        self.assertEqual(result['GIT-TARGET-DIVERGENCE'], 'SKIP')
         self.assertEqual(result['GIT-WORKTREE'], 'SKIP')
         self.assertEqual(result['GIT-SUBSYSTEM'], 'FAIL')
 
@@ -126,19 +129,43 @@ class GitChecks(unittest.TestCase):
         entries = {x['id']: x for x in report.checks}
         self.assertEqual(entries['GIT-TARGET-DIVERGENCE']['status'], 'SKIP')
         self.assertIn('divergente', entries['GIT-TARGET-DIVERGENCE']['explanation'])
-        self.assertIn('divergente', entries['GIT-MAIN-DIVERGENCE']['explanation'])
+        self.assertNotIn('GIT-MAIN-DIVERGENCE', entries)
         self.assertEqual(entries['GIT-CONFLICTS']['status'], 'SKIP')
-        self.assertIn('conflictos', entries['GIT-CONFLICTS']['explanation'])
+        self.assertIn('example', entries['GIT-CONFLICTS']['explanation'])
+        self.assertEqual(entries['GIT-INCOMING']['status'], 'SKIP')
 
-    def test_ahead_and_shared_change(self):
+    def test_borrado_frente_a_modificacion_es_conflicto(self):
         self.git('switch', '-qc', 'feature/vision-demo')
-        (self.root / 'AGENTS.md').write_text('policy')
-        self.git('add', 'AGENTS.md')
-        result = check_git_context.check(self.root, target='main', environ={})
-        self.assertEqual(states(result)['GIT-SHARED'], 'SKIP')
-        self.assertEqual(states(result)['GIT-WORKTREE'], 'SKIP')
-        self.git('commit', '-qm', 'policy')
-        self.assertEqual(states(check_git_context.check(self.root, target='main', environ={}))['GIT-SHARED'], 'SKIP')
+        self.git('rm', '-q', 'example')
+        self.git('commit', '-qm', 'delete')
+        self.git('switch', '-q', 'main')
+        (self.root / 'example').write_text('remote')
+        self.git('commit', '-qam', 'modify')
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('switch', '-q', 'feature/vision-demo')
+        before = sorted(p.name for p in (self.root / '.git/objects').iterdir())
+        self.assertEqual(states(check_git_context.check(self.root, target='main', environ={}))['GIT-CONFLICTS'], 'SKIP')
+        self.assertEqual(sorted(p.name for p in (self.root / '.git/objects').iterdir()), before)
+
+    def test_cambios_entrantes_no_son_propios(self):
+        self.git('switch', '-qc', 'feature/vision-demo')
+        own = self.root / 'ros2_ws/src/robot_percepcion_decision/node.py'
+        own.parent.mkdir(parents=True)
+        own.write_text('value = 1\n')
+        self.git('add', '-A')
+        self.git('commit', '-qm', 'vision')
+        self.git('switch', '-q', 'main')
+        other = self.root / 'ros2_ws/src/robot_brazo/node.py'
+        other.parent.mkdir(parents=True)
+        other.write_text('value = 1\n')
+        self.git('add', '-A')
+        self.git('commit', '-qm', 'arm')
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('switch', '-q', 'feature/vision-demo')
+        entries = {item['id']: item for item in check_git_context.check(self.root, target='main', environ={}).checks}
+        self.assertEqual(entries['GIT-CROSS']['status'], 'PASS')
+        self.assertNotIn('brazo', entries['GIT-OWNERS']['explanation'])
+        self.assertEqual(entries['GIT-INCOMING']['status'], 'PASS')
 
     def test_vision_interna_no_alerta_contrato(self):
         self.git('switch', '-qc', 'feature/vision-interna')
@@ -150,14 +177,43 @@ class GitChecks(unittest.TestCase):
         self.assertEqual(result['GIT-CROSS']['status'], 'PASS')
         self.assertIn('vision:', result['GIT-OWNERS']['explanation'])
 
-    def test_interfaces_alerta_revision_conjunta(self):
-        self.git('switch', '-qc', 'feature/vision-interfaces')
+    def test_rutas_compartidas_alertan_revision_conjunta(self):
+        self.git('switch', '-qc', 'feature/vision-demo')
+        agents = self.root / 'AGENTS.md'
+        agents.write_text('policy')
+        self.git('add', 'AGENTS.md')
+        result = states(check_git_context.check(self.root, target='main', environ={}))
+        self.assertEqual(result['GIT-SHARED'], 'SKIP')
+        self.assertEqual(result['GIT-WORKTREE'], 'SKIP')
+        self.git('commit', '-qm', 'policy')
+        interface = self.root / 'ros2_ws/src/robot_interfaces/msg/Target.msg'
+        interface.parent.mkdir(parents=True)
+        interface.write_text('float64 x\n')
+        entries = {item['id']: item for item in check_git_context.check(self.root, target='main', environ={}).checks}
+        self.assertEqual(entries['GIT-SHARED']['status'], 'SKIP')
+        self.assertIn('AGENTS.md', entries['GIT-SHARED']['explanation'])
+        self.assertIn('robot_interfaces', entries['GIT-SHARED']['explanation'])
+
+    def test_mover_fuera_de_interfaces_es_compartido(self):
         path = self.root / 'ros2_ws/src/robot_interfaces/msg/Target.msg'
         path.parent.mkdir(parents=True)
         path.write_text('float64 x\n')
-        result = {item['id']: item for item in check_git_context.check(self.root, target='main', environ={}).checks}
-        self.assertEqual(result['GIT-SHARED']['status'], 'SKIP')
-        self.assertIn('robot_interfaces', result['GIT-SHARED']['explanation'])
+        self.git('add', '-A')
+        self.git('commit', '-qm', 'interface')
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('switch', '-qc', 'feature/vision-move')
+        destination = self.root / 'ros2_ws/src/robot_percepcion_decision/Target.msg'
+        destination.parent.mkdir(parents=True)
+        self.git('mv', 'ros2_ws/src/robot_interfaces/msg/Target.msg', str(destination))
+        self.git('commit', '-qm', 'move')
+        result = states(check_git_context.check(self.root, target='main', environ={}))
+        self.assertEqual(result['GIT-SHARED'], 'SKIP')
+        self.assertEqual(result['GIT-CROSS'], 'SKIP')
+
+    def test_hardware_pertenece_a_su_subsistema(self):
+        self.assertEqual(check_git_context.classify_path('hardware/brazo/pinza.step'), 'brazo')
+        self.assertEqual(check_git_context.classify_path('hardware/locomocion/chasis.step'), 'locomocion')
+        self.assertEqual(check_git_context.classify_path('firmware/main.c'), 'other')
 
     def test_cambios_en_dos_subsistemas_son_transversales(self):
         self.git('switch', '-qc', 'feature/vision-brazo')
@@ -199,6 +255,7 @@ class GitChecks(unittest.TestCase):
                 self.git('update-ref', 'refs/remotes/origin/' + destination, 'HEAD')
                 report = check_git_context.check(self.root, environ={})
                 self.assertEqual(states(report)['GIT-TARGET-DIVERGENCE'], 'PASS')
+                self.assertEqual(states(report)['GIT-UPSTREAM'], 'SKIP')
                 self.assertTrue(any('origin/' + destination in entry['explanation'] for entry in report.checks))
                 self.git('switch', '-q', 'main')
         self.git('switch', '-qc', 'chore/repository-reorganization')
@@ -226,16 +283,29 @@ class GitChecks(unittest.TestCase):
             if args[0] == 'remote':
                 self.assertEqual(args[1], 'get-url')
             if args[0] == 'merge-tree':
-                self.assertEqual(len(args), 4)
-                self.assertNotIn('--write-tree', args)
+                scratch = Path(call.kwargs['env']['GIT_OBJECT_DIRECTORY'])
+                self.assertNotIn(self.root.resolve(), scratch.resolve().parents)
 
-    def test_wrong_push_url(self):
+    def test_origin_urls(self):
+        for url, expected in (
+            ('https://github.com/amayadiegoalejandro05/physalisharvest', 'PASS'),
+            ('git@github.com:amayadiegoalejandro05/PhysalisHarvest.git', 'PASS'),
+            ('ssh://git@github.com/amayadiegoalejandro05/PhysalisHarvest', 'PASS'),
+            ('https://github.com/amayadiegoalejandro05/Robot-Cosechador.git', 'FAIL'),
+        ):
+            with self.subTest(url=url):
+                self.git('remote', 'set-url', 'origin', url)
+                self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], expected)
+        self.git('remote', 'set-url', 'origin', 'https://github.com/amayadiegoalejandro05/PhysalisHarvest.git')
         self.git('remote', 'set-url', '--push', 'origin', 'https://example.invalid/other.git')
         self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], 'FAIL')
 
-    def test_wrong_remote(self):
-        self.git('remote', 'set-url', 'origin', 'https://github.com/amayadiegoalejandro05/Robot-Cosechador.git')
-        self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], 'FAIL')
+    def test_sin_base_comun_no_da_pass(self):
+        self.git('update-ref', '-d', 'refs/remotes/origin/main')
+        self.git('switch', '-qc', 'feature/vision-demo')
+        result = states(check_git_context.check(self.root, target='main', environ={}))
+        for key in ('GIT-INCOMING', 'GIT-SHARED', 'GIT-CROSS'):
+            self.assertEqual(result[key], 'SKIP')
 
     def test_detached_pull_request_does_not_claim_source_is_current(self):
         self.git('switch', '--detach')
@@ -266,6 +336,11 @@ class RosInventoryChecks(unittest.TestCase):
             (ctest / 'Test.xml').write_text('<Site><Testing><Test Status="passed"/></Testing></Site>')
             result = subprocess.run([sys.executable, str(script), str(root)], check=True, capture_output=True, text=True, encoding='utf-8', env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
             self.assertIn('1 casos con resultado', result.stdout)
+            (package / 'msg').mkdir()
+            (package / 'msg/Target.msg').write_text('float64 x\n')
+            (package / 'msg/notes.txt').write_text('')
+            result = subprocess.run([sys.executable, str(script), '--interfaces', str(root)], check=True, capture_output=True, text=True)
+            self.assertEqual(result.stdout.splitlines(), ['robot_brazo/msg/Target'])
 
 
 if __name__ == '__main__': unittest.main()

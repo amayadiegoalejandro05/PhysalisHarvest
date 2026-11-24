@@ -19,7 +19,7 @@ matrix = np.asarray(json.loads(calibration)['proyeccion_depth_a_rgb'])
 sdk = next(Path('C:/Astra/SDK').glob('OpenNI_2.3.0.86*/Win64-Release/tools/NiViewer'))
 evidence = Path(__file__).resolve().parent
 command = ['wsl.exe', '-d', 'Ubuntu-24.04', '--cd', str(evidence), '--', 'bash', '-lc',
-           'source /opt/ros/jazzy/setup.bash && export ROS_DOMAIN_ID=85 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST && exec python3 -B ros_xyz_test.py']
+           'source /opt/ros/jazzy/setup.bash && export ROS_DOMAIN_ID=85 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST && exec python3 -B ros_xyz_bench.py']
 
 with subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                       encoding='utf-8') as ros:

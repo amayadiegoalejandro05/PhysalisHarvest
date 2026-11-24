@@ -28,7 +28,7 @@ El cliente reserva `--run` para un ciclo deliberado y supervisado. Antes de usar
 Para repetir el eco Astra y la secuencia en seco, ejecutar los siguientes comandos desde la raíz en Windows, cada uno con su propio sketch cargado y los 6 V apagados. Usar el entorno de captura indicado en el README del paquete ROS. Los scripts reutilizan el clon hermano `COORDENADAS_ORBBECASTRA`, su matriz local verificada por SHA-256 y el nombre de distribución `Ubuntu-24.04`. Ajustar las rutas e índice RGB si cambia el entorno.
 
 ```powershell
-python firmware/bench_2wd/tools/camera_xyz_test.py
+python firmware/bench_2wd/tools/camera_xyz_bench.py
 python firmware/bench_2wd/tools/camera_sequence_dry.py --arm-dry
 ```
 
