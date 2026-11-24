@@ -93,16 +93,10 @@ jobs:
           set -eo pipefail
           source /opt/ros/jazzy/setup.bash
           source ros2_ws/install/setup.bash
-          python3 - <<'PY' > "$RUNNER_TEMP/ros-logs/interfaces.txt"
-          import pathlib, subprocess, xml.etree.ElementTree as ET
-          for manifest in pathlib.Path('ros2_ws/src').rglob('package.xml'):
-              package = ET.parse(manifest).getroot().findtext('name')
-              for folder in ('msg', 'srv', 'action'):
-                  for interface in (manifest.parent / folder).glob('*.' + folder):
-                      name = f'{package}/{folder}/{interface.stem}'
-                      print(name, flush=True)
-                      subprocess.run(['ros2', 'interface', 'show', name], check=True)
-          PY
+          python3 scripts/report_ros_packages.py --interfaces . | while read -r name; do
+            echo "$name"
+            ros2 interface show "$name"
+          done > "$RUNNER_TEMP/ros-logs/interfaces.txt"
           cat "$RUNNER_TEMP/ros-logs/interfaces.txt"
       - name: Ejecutar pruebas ROS disponibles
         shell: bash

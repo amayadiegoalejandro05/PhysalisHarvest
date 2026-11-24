@@ -210,6 +210,11 @@ class GitChecks(unittest.TestCase):
         self.assertEqual(result['GIT-SHARED'], 'SKIP')
         self.assertEqual(result['GIT-CROSS'], 'SKIP')
 
+    def test_hardware_pertenece_a_su_subsistema(self):
+        self.assertEqual(check_git_context.classify_path('hardware/brazo/pinza.step'), 'brazo')
+        self.assertEqual(check_git_context.classify_path('hardware/locomocion/chasis.step'), 'locomocion')
+        self.assertEqual(check_git_context.classify_path('firmware/main.c'), 'other')
+
     def test_cambios_en_dos_subsistemas_son_transversales(self):
         self.git('switch', '-qc', 'feature/vision-brazo')
         for package in ('robot_brazo', 'robot_percepcion_decision'):
@@ -331,6 +336,11 @@ class RosInventoryChecks(unittest.TestCase):
             (ctest / 'Test.xml').write_text('<Site><Testing><Test Status="passed"/></Testing></Site>')
             result = subprocess.run([sys.executable, str(script), str(root)], check=True, capture_output=True, text=True, encoding='utf-8', env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
             self.assertIn('1 casos con resultado', result.stdout)
+            (package / 'msg').mkdir()
+            (package / 'msg/Target.msg').write_text('float64 x\n')
+            (package / 'msg/notes.txt').write_text('')
+            result = subprocess.run([sys.executable, str(script), '--interfaces', str(root)], check=True, capture_output=True, text=True)
+            self.assertEqual(result.stdout.splitlines(), ['robot_brazo/msg/Target'])
 
 
 if __name__ == '__main__': unittest.main()

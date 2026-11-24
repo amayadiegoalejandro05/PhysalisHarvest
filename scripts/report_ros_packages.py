@@ -3,11 +3,20 @@ import pathlib
 import sys
 import xml.etree.ElementTree as ET
 
-root = pathlib.Path(sys.argv[1])
+interfaces_only = '--interfaces' in sys.argv[1:]
+root = pathlib.Path([arg for arg in sys.argv[1:] if arg != '--interfaces'][0])
 workspace = root / 'ros2_ws'
 groups = {'robot_percepcion_decision': 'visión', 'robot_brazo': 'brazo',
           'robot_locomocion': 'locomoción', 'robot_interfaces': 'interfaces'}
 manifests = sorted((workspace / 'src').rglob('package.xml'))
+if interfaces_only:
+    # Custom msg, srv and action types, one per line, for ros2 interface show.
+    for manifest in manifests:
+        package = ET.parse(manifest).getroot().findtext('name')
+        for folder in ('msg', 'srv', 'action'):
+            for interface in sorted((manifest.parent / folder).glob('*.' + folder)):
+                print(f'{package}/{folder}/{interface.stem}')
+    sys.exit(0)
 print(f'Paquetes ROS detectados: {len(manifests)}')
 for directory, label in groups.items():
     matches = [p for p in manifests if directory in p.relative_to(workspace / 'src').parts]
