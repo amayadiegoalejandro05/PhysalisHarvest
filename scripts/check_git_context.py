@@ -41,6 +41,8 @@ def classify_path(path):
         return 'shared'
     if len(parts) >= 4 and parts[:2] == ['ros2_ws', 'src'] and parts[2] in OWNED:
         return OWNED[parts[2]]
+    if len(parts) >= 3 and parts[0] == 'hardware' and parts[1] in ('brazo', 'locomocion'):
+        return parts[1]
     return 'other'
 
 
