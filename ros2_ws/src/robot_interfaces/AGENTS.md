@@ -15,4 +15,4 @@ Responsabilidad: definición futura y versionado de contratos entre visión, bra
 - Coordine los PR de interfaces con los equipos afectados en `feat/vision`, `feat/arm`, `feat/locomotion` y, cuando corresponda, `feat/2WD`.
 - Solicite revisión según la política general; no altere experimentos o trabajo ajeno.
 
-Antes de cada commit y PR aplique la política central de sincronización de la sección 11 de [AGENTS.md](../../../AGENTS.md), indicando destino y subsistema.
+Antes de cada commit y PR aplique la preparación y la política de ramas de las secciones 1 y 4 de [AGENTS.md](../../../AGENTS.md), indicando destino y subsistema.

@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 
 
-def git(root, *args):
-    return subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True, encoding='utf-8', errors='replace')
+def git(root, *args, env=None):
+    return subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True, encoding='utf-8', errors='replace', env=env)
 
 
 class Report:

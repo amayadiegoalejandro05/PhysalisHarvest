@@ -3,6 +3,7 @@ import argparse
 import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 from check_common import Report, git
 
@@ -40,6 +41,8 @@ def classify_path(path):
         return 'shared'
     if len(parts) >= 4 and parts[:2] == ['ros2_ws', 'src'] and parts[2] in OWNED:
         return OWNED[parts[2]]
+    if len(parts) >= 3 and parts[0] == 'hardware' and parts[1] in ('brazo', 'locomocion'):
+        return parts[1]
     return 'other'
 
 
@@ -49,6 +52,12 @@ def check(root, target=None, subsystem=None, environ=None):
     env = os.environ if environ is None else environ
     report = Report(root)
     def run(*args): return git(root, *args)
+    bases = {}
+    def merge_base(ref):
+        if ref not in bases:
+            result = run('merge-base', 'HEAD', ref)
+            bases[ref] = result.stdout.strip() if result.returncode == 0 else None
+        return bases[ref]
     top = run('rev-parse', '--show-toplevel')
     if top.returncode:
         report.add('GIT-REPO', 'FAIL', 'No se encontró un repositorio Git.', 'Ejecutar en el repositorio correcto.')
@@ -56,14 +65,15 @@ def check(root, target=None, subsystem=None, environ=None):
     report.add('GIT-REPO', 'PASS', 'Repositorio: ' + top.stdout.strip(), 'Confirmar el directorio de trabajo.')
     fetch_urls = run('remote', 'get-url', '--all', 'origin')
     push_urls = run('remote', 'get-url', '--push', '--all', 'origin')
+    # GitHub does not distinguish case in owner or repository names.
     accepted_urls = {
-        f'{base}{suffix}'
+        f'{base}{suffix}'.lower()
         for base in (f'https://{EXPECTED}', f'git@{EXPECTED.replace("/", ":", 1)}', f'ssh://git@{EXPECTED}')
         for suffix in ('', '.git')
     }
     valid_origin = all(
         result.returncode == 0 and result.stdout.splitlines()
-        and set(result.stdout.splitlines()) <= accepted_urls
+        and {url.lower() for url in result.stdout.splitlines()} <= accepted_urls
         for result in (fetch_urls, push_urls)
     )
     report.add('GIT-ORIGIN', 'PASS' if valid_origin else 'FAIL',
@@ -74,7 +84,8 @@ def check(root, target=None, subsystem=None, environ=None):
         return report
     head = run('rev-parse', '--verify', 'HEAD')
     sha = head.stdout.strip()
-    report.add('GIT-HEAD', 'PASS' if head.returncode == 0 and re.fullmatch(r'[0-9a-f]{40,64}', sha) else 'FAIL', 'HEAD: ' + (sha or 'no disponible'), 'Crear o recuperar un commit válido.' if head.returncode else 'Registrar este SHA en la evidencia.')
+    valid_head = head.returncode == 0 and re.fullmatch(r'[0-9a-f]{40,64}', sha)
+    report.add('GIT-HEAD', 'PASS' if valid_head else 'FAIL', 'HEAD: ' + (sha or 'no disponible'), 'Registrar este SHA en la evidencia.' if valid_head else 'Crear o recuperar un commit válido.')
     branch_result = run('symbolic-ref', '--quiet', '--short', 'HEAD')
     branch = branch_result.stdout.strip()
     is_pr = env.get('GITHUB_ACTIONS') == 'true' and env.get('GITHUB_EVENT_NAME') in ('pull_request', 'pull_request_target')
@@ -111,11 +122,11 @@ def check(root, target=None, subsystem=None, environ=None):
         behind, ahead = map(int, count.stdout.split())
         # For a PR merge checkout HEAD already contains the base; this is not source branch divergence.
         suffix = ' Comparación del checkout de PR, no necesariamente de la rama fuente.' if is_pr and not branch else ''
-        shallow = run('rev-parse', '--is-shallow-repository').stdout.strip() == 'true'
         state = 'SKIP' if behind or shallow or (is_pr and not branch) else 'PASS'
         relation = 'divergente' if behind and ahead else ('atrasada' if behind else ('adelantada' if ahead else 'sincronizada con referencia local'))
         if shallow: suffix += ' Historial superficial: la comparación puede estar incompleta.'
         report.add(identifier, state, f'{ref}: {relation}; HEAD detrás {behind}, delante {ahead} commits.' + suffix, 'Sincronizar o revisar la base antes de integrar; fetch puede revelar cambios nuevos.' if behind else 'Actualizar referencias antes de integrar; no se consulta la red.')
+    shallow = run('rev-parse', '--is-shallow-repository').stdout.strip() == 'true'
     compare('GIT-TRACKING-DIVERGENCE', tracking, 'Seguimiento')
     target_name = target or (env.get('GITHUB_BASE_REF') if is_pr else None)
     if not target_name:
@@ -132,41 +143,55 @@ def check(root, target=None, subsystem=None, environ=None):
         else:
             report.add('GIT-TARGET-REF', 'FAIL', 'El destino debe identificar una rama de origin.',
                        'Indicar el nombre de la rama remota, por ejemplo feat/vision.')
+    main_ref = ORIGIN_REF + 'main'
     compare('GIT-TARGET-DIVERGENCE', target_ref, 'Destino')
-    compare('GIT-MAIN-DIVERGENCE', ORIGIN_REF + 'main', 'main')
-    # A dry comparison of committed trees is advisory, never a merge or a guarantee.
+    if target_ref != main_ref:
+        compare('GIT-MAIN-DIVERGENCE', main_ref, 'main')
+    # Real merge simulation; new objects go to a temporary directory so the repository is not modified.
     if not target_ref or (is_pr and not branch):
         report.add('GIT-CONFLICTS', 'SKIP', 'Destino o rama fuente no verificable en este checkout.', 'Comparar la rama fuente en un clon completo.')
+    elif not merge_base(target_ref):
+        report.add('GIT-CONFLICTS', 'SKIP', 'No se encontró ancestro común local.', 'Actualizar referencias y revisar historial.')
     else:
-        base = run('merge-base', 'HEAD', target_ref)
-        if base.returncode:
-            report.add('GIT-CONFLICTS', 'SKIP', 'No se encontró ancestro común local.', 'Actualizar referencias y revisar historial.')
+        objects = run('rev-parse', '--path-format=absolute', '--git-path', 'objects').stdout.strip()
+        with tempfile.TemporaryDirectory() as scratch:
+            preview = git(root, 'merge-tree', '--write-tree', '--name-only', '--no-messages', 'HEAD', target_ref,
+                          env={**os.environ, 'GIT_OBJECT_DIRECTORY': scratch, 'GIT_ALTERNATE_OBJECT_DIRECTORIES': objects})
+        conflicted = sorted(set(preview.stdout.splitlines()[1:]))
+        if preview.returncode == 1:
+            report.add('GIT-CONFLICTS', 'SKIP', 'Conflictos en árboles confirmados: ' + ', '.join(conflicted), 'Revisar y resolver con responsables antes del PR.')
+        elif preview.returncode:
+            report.add('GIT-CONFLICTS', 'SKIP', 'No fue posible simular la integración (requiere Git 2.38 o posterior).', 'Revisar integración en un entorno aislado.')
         else:
-            preview = run('merge-tree', base.stdout.strip(), 'HEAD', target_ref)
-            if preview.returncode:
-                report.add('GIT-CONFLICTS', 'SKIP', 'No fue posible calcular una vista previa.', 'Revisar integración en un entorno aislado.')
-            elif '<<<<<<< ' in preview.stdout:
-                report.add('GIT-CONFLICTS', 'SKIP', 'Posibles conflictos en árboles confirmados.', 'Revisar y resolver con responsables antes del PR.')
-            else:
-                report.add('GIT-CONFLICTS', 'PASS', 'No se detectaron marcadores de conflicto en árboles confirmados.', 'Repetir con referencias actuales; no cubre cambios locales ni garantiza integración.')
+            report.add('GIT-CONFLICTS', 'PASS', 'La integración simulada de árboles confirmados no produce conflictos.', 'Repetir con referencias actuales; no cubre cambios locales ni garantiza compatibilidad.')
     changes = set()
-    for args in [('diff', '--name-only', 'HEAD'), ('diff', '--cached', '--name-only'), ('ls-files', '--others', '--exclude-standard')]:
+    for args in [('diff', '--name-only', '--no-renames', 'HEAD'), ('ls-files', '--others', '--exclude-standard')]:
         result = run(*args)
         if result.returncode == 0: changes.update(result.stdout.splitlines())
-    for ref in {target_ref, 'refs/remotes/origin/main'} - {None}:
-        base = run('merge-base', 'HEAD', ref)
-        if base.returncode == 0:
-            result = run('diff', '--name-only', base.stdout.strip(), ref)
-            if result.returncode == 0: changes.update(result.stdout.splitlines())
-            own = run('diff', '--name-only', base.stdout.strip(), 'HEAD')
-            if own.returncode == 0: changes.update(own.stdout.splitlines())
+    incoming = set()
+    base_ref = target_ref or main_ref
+    committed_known = bool(merge_base(base_ref))
+    if committed_known:
+        own = run('diff', '--name-only', '--no-renames', merge_base(base_ref), 'HEAD')
+        if own.returncode == 0: changes.update(own.stdout.splitlines())
+        result = run('diff', '--name-only', '--no-renames', merge_base(base_ref), base_ref)
+        if result.returncode == 0: incoming.update(result.stdout.splitlines())
+    overlap = sorted(changes & incoming)
+    unknown = f'Sin base común con {base_ref.removeprefix(ORIGIN_REF)}: solo se examinaron cambios sin confirmar.'
+    if not committed_known:
+        report.add('GIT-INCOMING', 'SKIP', unknown, 'Obtener la rama destino (git fetch origin) y repetir.')
+    else:
+        report.add('GIT-INCOMING', 'SKIP' if overlap else 'PASS',
+                   'Archivos modificados también en ' + base_ref.removeprefix(ORIGIN_REF) + ': ' + ', '.join(overlap) if overlap
+                   else f'{len(incoming)} archivos cambiados en el destino desde la base común; ninguno coincide con los propios.',
+                   'Sincronizar con el destino y revisar esos archivos con sus responsables.' if overlap else 'Sincronizar antes de integrar si hay cambios entrantes.')
     grouped = {group: sorted(p for p in changes if classify_path(p) == group) for group in ('vision', 'brazo', 'locomocion', 'shared', 'other')}
     risky = grouped['shared']
     owners = [group for group in ('vision', 'brazo', 'locomocion') if grouped[group]]
     report.add('GIT-OWNERS', 'PASS' if owners else 'SKIP', '; '.join(f'{owner}: {", ".join(grouped[owner])}' for owner in owners) if owners else 'No se detectaron rutas exclusivas de subsistema.', 'Revisar propiedad y semántica de los cambios.')
-    report.add('GIT-SHARED', 'SKIP' if risky else 'PASS', 'Rutas compartidas para revisar: ' + ', '.join(risky) if risky else 'Sin rutas compartidas conocidas en los cambios examinados.', 'Solicitar revisión de integración y equipos afectados.' if risky else 'La clasificación por rutas no garantiza compatibilidad ROS ni detecta toda dependencia.')
+    report.add('GIT-SHARED', 'PASS' if committed_known and not risky else 'SKIP', 'Rutas compartidas para revisar: ' + ', '.join(risky) if risky else ('Sin rutas compartidas conocidas en los cambios examinados.' if committed_known else unknown), 'Solicitar revisión de integración y equipos afectados.' if risky else 'La clasificación por rutas no garantiza compatibilidad ROS ni detecta toda dependencia.')
     cross = len(owners) > 1 or bool(risky and owners)
-    report.add('GIT-CROSS', 'SKIP' if cross else 'PASS', 'Cambios en varios subsistemas o en subsistema e integración compartida.' if cross else 'No se detectó combinación transversal por rutas.', 'Solicitar revisión conjunta de los equipos afectados.' if cross else 'Revisar manualmente el impacto semántico.')
+    report.add('GIT-CROSS', 'PASS' if committed_known and not cross else 'SKIP', 'Cambios en varios subsistemas o en subsistema e integración compartida.' if cross else ('No se detectó combinación transversal por rutas.' if committed_known else unknown), 'Solicitar revisión conjunta de los equipos afectados.' if cross else 'Revisar manualmente el impacto semántico.')
     if grouped['other']:
         report.add('GIT-OTHER', 'SKIP', 'Rutas no clasificadas: ' + ', '.join(grouped['other']), 'Determinar responsables y posible impacto transversal manualmente.')
     recognized = permanent or temporary or source == 'main'
@@ -186,7 +211,7 @@ def check(root, target=None, subsystem=None, environ=None):
         elif not markers:
             report.add('GIT-SUBSYSTEM', 'SKIP', f'Rama reconocida: {source}; no se identifica un subsistema.', 'Confirmar manualmente que corresponde a cambios compartidos y su destino.')
         else:
-            report.add('GIT-SUBSYSTEM', 'PASS', f'Rama reconocida: {source}; subsistemas nombrados: {", ".join(sorted(markers)) or "compartido/no indicado"}.', 'Confirmar el destino de los cambios compartidos.')
+            report.add('GIT-SUBSYSTEM', 'PASS', f'Rama reconocida: {source}; subsistemas nombrados: {", ".join(sorted(markers))}.', 'Confirmar el destino de los cambios compartidos.')
     report.add('GIT-FRESHNESS', 'SKIP', 'Las referencias locales no prueban el estado actual del servidor.', 'Ejecutar git fetch origin y repetir antes de integrar.')
     return report
 
