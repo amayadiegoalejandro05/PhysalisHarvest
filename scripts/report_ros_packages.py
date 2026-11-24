@@ -26,7 +26,8 @@ for manifest in manifests:
         name = ET.parse(manifest).getroot().findtext('name')
         installed = (workspace / 'install' / name / 'share' / name / 'package.xml').is_file()
         build = workspace / 'build' / name
-        results = list((build / 'test_results').rglob('*.xml'))
+        # ament_cmake writes test_results/; colcon stores ament_python results in pytest.xml.
+        results = list((build / 'test_results').rglob('*.xml')) + [p for p in [build / 'pytest.xml'] if p.is_file()]
         count = sum(len(ET.parse(p).getroot().findall('.//testcase')) for p in results)
         # CTest's native Test.xml is distinct from JUnit; do not count both copies.
         if not count:
