@@ -226,7 +226,7 @@ Estos comandos verifican estructura, contexto Git y pruebas incluidas. **No prue
 
 Cuando un subsistema incorpore paquetes ROS 2 reales con `package.xml` y dependencias declaradas, su compilación y pruebas se ejecutarán desde `ros2_ws` en un entorno compatible. Antes de usar `colcon`, confirma SO, ROS, dependencias y disponibilidad de paquetes; consulta [entorno reproducible](docs/entorno-reproducible.md).
 
-La [CI](.github/workflows/ci.yml) evalúa comprobaciones estáticas y dispone de una puerta ROS aislada. Mientras `ros2_ws/src` carezca de manifiestos, la compilación y las pruebas ROS 2 del robot se informan como **SKIP**, aunque el workflow termine con éxito.
+La [CI](.github/workflows/ci.yml) evalúa comprobaciones estáticas; la [puerta ROS aislada](.github/workflows/ros-gate.yml) se ejecuta cuando cambian sus scripts. Mientras `ros2_ws/src` carezca de manifiestos, la compilación y las pruebas ROS 2 del robot se informan como **SKIP**, aunque el workflow termine con éxito.
 
 ## Organización del repositorio
 

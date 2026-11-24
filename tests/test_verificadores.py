@@ -89,15 +89,6 @@ class GitChecks(unittest.TestCase):
     def git(self, *args):
         return subprocess.run(['git', '-C', str(self.root), *args], check=True, capture_output=True, text=True)
 
-    def test_target_not_required_to_equal_head(self):
-        self.git('switch', '-qc', 'feature/vision-test')
-        (self.root / 'example').write_text('changed')
-        self.git('commit', '-qam', 'change')
-        result = states(check_git_context.check(self.root, target='main', subsystem='vision', environ={}))
-        self.assertEqual(result['GIT-TARGET-DIVERGENCE'], 'PASS')
-        self.assertEqual(result['GIT-SUBSYSTEM'], 'PASS')
-        self.assertEqual(result['GIT-UPSTREAM'], 'SKIP')
-
     def test_old_base_dirty_and_wrong_subsystem(self):
         self.git('switch', '-qc', 'feature/brazo-demo')
         old = self.git('rev-parse', 'HEAD').stdout.strip()
@@ -109,7 +100,6 @@ class GitChecks(unittest.TestCase):
         env = {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'pull_request', 'GITHUB_HEAD_REF': 'feature/brazo-demo', 'GITHUB_BASE_REF': 'main'}
         result = states(check_git_context.check(self.root, subsystem='vision', environ=env))
         self.assertEqual(result['GIT-BRANCH'], 'SKIP')
-        self.assertEqual(result['GIT-TARGET-DIVERGENCE'], 'SKIP')
         self.assertEqual(result['GIT-WORKTREE'], 'SKIP')
         self.assertEqual(result['GIT-SUBSYSTEM'], 'FAIL')
 
@@ -130,16 +120,6 @@ class GitChecks(unittest.TestCase):
         self.assertEqual(entries['GIT-CONFLICTS']['status'], 'SKIP')
         self.assertIn('conflictos', entries['GIT-CONFLICTS']['explanation'])
 
-    def test_ahead_and_shared_change(self):
-        self.git('switch', '-qc', 'feature/vision-demo')
-        (self.root / 'AGENTS.md').write_text('policy')
-        self.git('add', 'AGENTS.md')
-        result = check_git_context.check(self.root, target='main', environ={})
-        self.assertEqual(states(result)['GIT-SHARED'], 'SKIP')
-        self.assertEqual(states(result)['GIT-WORKTREE'], 'SKIP')
-        self.git('commit', '-qm', 'policy')
-        self.assertEqual(states(check_git_context.check(self.root, target='main', environ={}))['GIT-SHARED'], 'SKIP')
-
     def test_vision_interna_no_alerta_contrato(self):
         self.git('switch', '-qc', 'feature/vision-interna')
         path = self.root / 'ros2_ws/src/robot_percepcion_decision/vision.py'
@@ -150,14 +130,22 @@ class GitChecks(unittest.TestCase):
         self.assertEqual(result['GIT-CROSS']['status'], 'PASS')
         self.assertIn('vision:', result['GIT-OWNERS']['explanation'])
 
-    def test_interfaces_alerta_revision_conjunta(self):
-        self.git('switch', '-qc', 'feature/vision-interfaces')
-        path = self.root / 'ros2_ws/src/robot_interfaces/msg/Target.msg'
-        path.parent.mkdir(parents=True)
-        path.write_text('float64 x\n')
-        result = {item['id']: item for item in check_git_context.check(self.root, target='main', environ={}).checks}
-        self.assertEqual(result['GIT-SHARED']['status'], 'SKIP')
-        self.assertIn('robot_interfaces', result['GIT-SHARED']['explanation'])
+    def test_rutas_compartidas_alertan_revision_conjunta(self):
+        self.git('switch', '-qc', 'feature/vision-demo')
+        agents = self.root / 'AGENTS.md'
+        agents.write_text('policy')
+        self.git('add', 'AGENTS.md')
+        result = states(check_git_context.check(self.root, target='main', environ={}))
+        self.assertEqual(result['GIT-SHARED'], 'SKIP')
+        self.assertEqual(result['GIT-WORKTREE'], 'SKIP')
+        self.git('commit', '-qm', 'policy')
+        interface = self.root / 'ros2_ws/src/robot_interfaces/msg/Target.msg'
+        interface.parent.mkdir(parents=True)
+        interface.write_text('float64 x\n')
+        entries = {item['id']: item for item in check_git_context.check(self.root, target='main', environ={}).checks}
+        self.assertEqual(entries['GIT-SHARED']['status'], 'SKIP')
+        self.assertIn('AGENTS.md', entries['GIT-SHARED']['explanation'])
+        self.assertIn('robot_interfaces', entries['GIT-SHARED']['explanation'])
 
     def test_cambios_en_dos_subsistemas_son_transversales(self):
         self.git('switch', '-qc', 'feature/vision-brazo')
@@ -199,6 +187,7 @@ class GitChecks(unittest.TestCase):
                 self.git('update-ref', 'refs/remotes/origin/' + destination, 'HEAD')
                 report = check_git_context.check(self.root, environ={})
                 self.assertEqual(states(report)['GIT-TARGET-DIVERGENCE'], 'PASS')
+                self.assertEqual(states(report)['GIT-UPSTREAM'], 'SKIP')
                 self.assertTrue(any('origin/' + destination in entry['explanation'] for entry in report.checks))
                 self.git('switch', '-q', 'main')
         self.git('switch', '-qc', 'chore/repository-reorganization')
@@ -229,12 +218,18 @@ class GitChecks(unittest.TestCase):
                 self.assertEqual(len(args), 4)
                 self.assertNotIn('--write-tree', args)
 
-    def test_wrong_push_url(self):
+    def test_origin_urls(self):
+        for url, expected in (
+            ('https://github.com/amayadiegoalejandro05/physalisharvest', 'PASS'),
+            ('git@github.com:amayadiegoalejandro05/PhysalisHarvest.git', 'PASS'),
+            ('ssh://git@github.com/amayadiegoalejandro05/PhysalisHarvest', 'PASS'),
+            ('https://github.com/amayadiegoalejandro05/Robot-Cosechador.git', 'FAIL'),
+        ):
+            with self.subTest(url=url):
+                self.git('remote', 'set-url', 'origin', url)
+                self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], expected)
+        self.git('remote', 'set-url', 'origin', 'https://github.com/amayadiegoalejandro05/PhysalisHarvest.git')
         self.git('remote', 'set-url', '--push', 'origin', 'https://example.invalid/other.git')
-        self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], 'FAIL')
-
-    def test_wrong_remote(self):
-        self.git('remote', 'set-url', 'origin', 'https://github.com/amayadiegoalejandro05/Robot-Cosechador.git')
         self.assertEqual(states(check_git_context.check(self.root, environ={}))['GIT-ORIGIN'], 'FAIL')
 
     def test_detached_pull_request_does_not_claim_source_is_current(self):

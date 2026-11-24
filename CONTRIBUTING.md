@@ -178,7 +178,7 @@ Acordar contratos requiere revisión de productores, consumidores e integración
 | Gazebo | Escenas versionadas, seeds, logs y obstáculos | Físicas idealizadas y/o sensores sintéticos |
 | Físico | Sensor/driver/motores instrumentados bajo protocolo seguro y referencia independiente | Generalización limitada a condiciones ensayadas |
 
-**CI existente:** `.github/workflows/ci.yml` contiene cuatro jobs: verificación estática, ROS 2 Jazzy, puerta ROS aislada y resumen. Si `ros2_ws/src` no tiene `package.xml`, la compilación y las pruebas del robot son **SKIP**, aunque los jobs terminen en verde. El paquete temporal de la puerta solo prueba que la infraestructura puede detectar un fallo y una corrección. No usar este resultado como evidencia de un subsistema funcional.
+**CI existente:** `.github/workflows/ci.yml` contiene cuatro jobs: verificación estática, detección de paquetes ROS, ROS 2 Jazzy y resumen. Si `ros2_ws/src` no tiene `package.xml`, el job ROS 2 Jazzy se omite y la compilación y las pruebas del robot son **SKIP**, aunque el workflow termine en verde. La puerta ROS aislada está en `.github/workflows/ros-gate.yml` y solo se ejecuta cuando cambian sus scripts o de forma manual. El paquete temporal de la puerta solo prueba que la infraestructura puede detectar un fallo y una corrección. No usar este resultado como evidencia de un subsistema funcional.
 
 En un PR revisa **Checks**, las salidas de cada job, artefactos y SHA evaluados. Un `PASS` no basta si las pruebas eran irrelevantes para el cambio. No omitas ni borres fallos válidos.
 
