@@ -15,4 +15,4 @@ Responsabilidad: plataforma móvil, desplazamiento, localización, control y seg
 - Use `feat/locomotion` para el desarrollo principal y `feat/2WD` para el banco experimental. Incorporar resultados 2WD a la rama principal del área o a `main` exige revisión, pruebas y aprobación explícita.
 - Solicite revisión según la política general; no altere experimentos o trabajo ajeno.
 
-Antes de cada commit y PR aplique la política central de sincronización de la sección 11 de [AGENTS.md](../../../AGENTS.md), indicando destino y subsistema.
+Antes de cada commit y PR aplique la preparación y la política de ramas de las secciones 1 y 4 de [AGENTS.md](../../../AGENTS.md), indicando destino y subsistema.
