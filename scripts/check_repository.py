@@ -80,7 +80,9 @@ def check(root):
             target = raw.strip('<>')
             parts = urlsplit(target)
             if parts.scheme or parts.netloc or not parts.path: continue
-            if not (p.parent / unquote(parts.path)).exists(): broken.append(f'{p.relative_to(root)} → {target}')
+            # GitHub resolves a leading slash from the repository root.
+            local = root / unquote(parts.path).lstrip('/') if parts.path.startswith('/') else p.parent / unquote(parts.path)
+            if not local.exists(): broken.append(f'{p.relative_to(root)} → {target}')
     report.add('REP-LINKS', 'FAIL' if broken else 'PASS', '; '.join(broken) if broken else 'Enlaces locales Markdown examinados.', 'Corregir rutas.' if broken else 'Revisar anclas y enlaces complejos manualmente.')
     if not in_git:
         report.add('REP-CONTENT', 'FAIL', 'No se pudo enumerar el contenido de Git.', 'Ejecutar dentro de un repositorio Git.')

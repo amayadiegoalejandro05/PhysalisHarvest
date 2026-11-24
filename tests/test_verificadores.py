@@ -46,7 +46,7 @@ class RepositoryChecks(unittest.TestCase):
             self.assertEqual(result[key], 'FAIL')
         (self.root / 'bad.py').write_text('value = 1\n')
         (self.root / 'bad.json').write_text('{}')
-        (self.root / 'README.md').write_text('[válido](CONTRIBUTING.md)', encoding='utf-8')
+        (self.root / 'README.md').write_text('[válido](CONTRIBUTING.md) [raíz](/docs/pruebas/README.md)', encoding='utf-8')
         p.write_text('<package><name>robot_brazo</name></package>')
         result = states(check_repository.check(self.root))
         for key in ('REP-PYTHON', 'REP-JSON', 'REP-LINKS', 'REP-ROS-MANIFEST'):
@@ -193,6 +193,22 @@ class GitChecks(unittest.TestCase):
         self.assertEqual(entries['GIT-SHARED']['status'], 'SKIP')
         self.assertIn('AGENTS.md', entries['GIT-SHARED']['explanation'])
         self.assertIn('robot_interfaces', entries['GIT-SHARED']['explanation'])
+
+    def test_mover_fuera_de_interfaces_es_compartido(self):
+        path = self.root / 'ros2_ws/src/robot_interfaces/msg/Target.msg'
+        path.parent.mkdir(parents=True)
+        path.write_text('float64 x\n')
+        self.git('add', '-A')
+        self.git('commit', '-qm', 'interface')
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('switch', '-qc', 'feature/vision-move')
+        destination = self.root / 'ros2_ws/src/robot_percepcion_decision/Target.msg'
+        destination.parent.mkdir(parents=True)
+        self.git('mv', 'ros2_ws/src/robot_interfaces/msg/Target.msg', str(destination))
+        self.git('commit', '-qm', 'move')
+        result = states(check_git_context.check(self.root, target='main', environ={}))
+        self.assertEqual(result['GIT-SHARED'], 'SKIP')
+        self.assertEqual(result['GIT-CROSS'], 'SKIP')
 
     def test_cambios_en_dos_subsistemas_son_transversales(self):
         self.git('switch', '-qc', 'feature/vision-brazo')

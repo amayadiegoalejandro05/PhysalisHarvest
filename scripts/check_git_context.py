@@ -82,7 +82,8 @@ def check(root, target=None, subsystem=None, environ=None):
         return report
     head = run('rev-parse', '--verify', 'HEAD')
     sha = head.stdout.strip()
-    report.add('GIT-HEAD', 'PASS' if head.returncode == 0 and re.fullmatch(r'[0-9a-f]{40,64}', sha) else 'FAIL', 'HEAD: ' + (sha or 'no disponible'), 'Crear o recuperar un commit válido.' if head.returncode else 'Registrar este SHA en la evidencia.')
+    valid_head = head.returncode == 0 and re.fullmatch(r'[0-9a-f]{40,64}', sha)
+    report.add('GIT-HEAD', 'PASS' if valid_head else 'FAIL', 'HEAD: ' + (sha or 'no disponible'), 'Registrar este SHA en la evidencia.' if valid_head else 'Crear o recuperar un commit válido.')
     branch_result = run('symbolic-ref', '--quiet', '--short', 'HEAD')
     branch = branch_result.stdout.strip()
     is_pr = env.get('GITHUB_ACTIONS') == 'true' and env.get('GITHUB_EVENT_NAME') in ('pull_request', 'pull_request_target')
@@ -162,16 +163,16 @@ def check(root, target=None, subsystem=None, environ=None):
         else:
             report.add('GIT-CONFLICTS', 'PASS', 'La integración simulada de árboles confirmados no produce conflictos.', 'Repetir con referencias actuales; no cubre cambios locales ni garantiza compatibilidad.')
     changes = set()
-    for args in [('diff', '--name-only', 'HEAD'), ('diff', '--cached', '--name-only'), ('ls-files', '--others', '--exclude-standard')]:
+    for args in [('diff', '--name-only', '--no-renames', 'HEAD'), ('ls-files', '--others', '--exclude-standard')]:
         result = run(*args)
         if result.returncode == 0: changes.update(result.stdout.splitlines())
     incoming = set()
     base_ref = target_ref or main_ref
     committed_known = bool(merge_base(base_ref))
     if committed_known:
-        own = run('diff', '--name-only', merge_base(base_ref), 'HEAD')
+        own = run('diff', '--name-only', '--no-renames', merge_base(base_ref), 'HEAD')
         if own.returncode == 0: changes.update(own.stdout.splitlines())
-        result = run('diff', '--name-only', merge_base(base_ref), base_ref)
+        result = run('diff', '--name-only', '--no-renames', merge_base(base_ref), base_ref)
         if result.returncode == 0: incoming.update(result.stdout.splitlines())
     overlap = sorted(changes & incoming)
     unknown = f'Sin base común con {base_ref.removeprefix(ORIGIN_REF)}: solo se examinaron cambios sin confirmar.'
