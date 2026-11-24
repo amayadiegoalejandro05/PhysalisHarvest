@@ -336,6 +336,14 @@ class RosInventoryChecks(unittest.TestCase):
             (ctest / 'Test.xml').write_text('<Site><Testing><Test Status="passed"/></Testing></Site>')
             result = subprocess.run([sys.executable, str(script), str(root)], check=True, capture_output=True, text=True, encoding='utf-8', env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
             self.assertIn('1 casos con resultado', result.stdout)
+            python_build = root / 'ros2_ws/build/robot_locomocion_py'
+            python_build.mkdir(parents=True)
+            (python_build / 'pytest.xml').write_text('<testsuites><testsuite><testcase/><testcase/></testsuite></testsuites>')
+            python_package = root / 'ros2_ws/src/robot_locomocion/robot_locomocion_py'
+            python_package.mkdir(parents=True)
+            (python_package / 'package.xml').write_text('<package><name>robot_locomocion_py</name></package>')
+            result = subprocess.run([sys.executable, str(script), str(root)], check=True, capture_output=True, text=True, encoding='utf-8', env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
+            self.assertIn('robot_locomocion_py: compilado=no confirmado; pruebas=2 casos con resultado', result.stdout)
             (package / 'msg').mkdir()
             (package / 'msg/Target.msg').write_text('float64 x\n')
             (package / 'msg/notes.txt').write_text('')
